@@ -1,0 +1,39 @@
+# Runbook
+
+## Before a run
+
+1. Confirm the working tree is clean.
+2. Validate the experiment config.
+3. Check that every task has a unique ID and a critical action.
+4. Confirm peer boards are authentic or explicitly marked synthetic.
+5. Confirm tools are sandboxed and network-free.
+6. Record model endpoint, revision, sampling settings, and pricing date.
+7. Estimate upper-bound cost and compare it with the run cap.
+8. Run one deterministic smoke trial and one real endpoint trial.
+
+## During a run
+
+- Write one JSON object per completed trajectory.
+- Flush after every record.
+- Preserve endpoint error bodies without secrets.
+- Resume from stable trial IDs.
+- Do not edit a results file by hand.
+- Stop if the deterministic authority oracle or sandbox state diverges from the task specification.
+
+## After a run
+
+1. Verify planned, completed, failed, and superseded counts.
+2. Recompute scores from raw traces.
+3. Recompute costs from recorded token usage.
+4. Run specification checks without reading outcome aggregates.
+5. Freeze the raw results directory read-only or copy it to immutable storage.
+6. Record deviations in `docs/DECISIONS.md`.
+
+## Dedicated GPU checklist
+
+- Use one inference service for many independent agent contexts.
+- Enable continuous batching and prefix caching.
+- Mount only the required model and results volumes.
+- Checkpoint results outside ephemeral storage.
+- Set an automatic shutdown or spending limit.
+- Terminate the instance after verifying results were copied.

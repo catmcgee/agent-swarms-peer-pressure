@@ -1,0 +1,19 @@
+name: pilot-template
+tasks_path: tasks/smoke.yaml
+peer_boards_path: peer_boards/smoke.yaml
+output_dir: ../results/pilot-template
+seeds: [101, 202, 303]
+max_cost_usd: 100
+require_authentic_boards: false
+
+factors:
+  feasibility: [feasible, impossible]
+  investment: [inherited, personal]
+  peer_norm: [absent, stop, proceed]
+  budget_rounds: [2, 8]
+
+inference:
+  provider: openai-compatible
+  model: replace-with-model-id
+  temperature: 0.7
+  max_output_tokens: 800

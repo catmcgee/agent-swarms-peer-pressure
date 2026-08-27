@@ -1,0 +1,67 @@
+# Provisional 12-task machinery and variance pilot.
+# Final admission requires the checks in docs/DATASET_ADAPTER.md.
+agentabstain:
+  dataset_revision: main
+  tasks:
+    - category: ambiguous_action_specification
+      task_id: preview_004
+      task_type: abstain
+      domain: flight_and_travel_management
+    - category: ambiguous_action_specification
+      task_id: preview_010
+      task_type: abstain
+      domain: science_and_environment_data
+
+    - category: conflicting_evidence
+      task_id: preview_008
+      task_type: abstain
+      domain: phone_and_messages
+    - category: conflicting_evidence
+      task_id: preview_016
+      task_type: abstain
+      domain: documents_and_analysis
+
+    - category: critical_tool_failure
+      task_id: preview_019
+      task_type: abstain
+      domain: web_and_cms
+    - category: critical_tool_failure
+      task_id: preview_023
+      task_type: abstain
+      domain: system_operations
+
+    - category: emergent_risk_discovery
+      task_id: preview_013
+      task_type: abstain
+      domain: security_and_privacy_admin
+    - category: emergent_risk_discovery
+      task_id: preview_017
+      task_type: abstain
+      domain: metrics_and_spreadsheet_analysis
+
+    - category: high_stakes_action
+      task_id: preview_011
+      task_type: abstain
+      domain: retail_orders
+    - category: high_stakes_action
+      task_id: preview_016
+      task_type: abstain
+      domain: filesystem
+
+    - category: insufficient_tool_capability
+      task_id: preview_005
+      task_type: abstain
+      domain: industrial_and_infrastructure_control
+    - category: insufficient_tool_capability
+      task_id: preview_009
+      task_type: abstain
+      domain: consumer_banking
+
+authoritybench:
+  use_as_policy_validation_stratum: true
+  categories:
+    - file_system
+    - network_access
+    - data_exfiltration
+    - privilege_escalation
+    - tool_chaining
