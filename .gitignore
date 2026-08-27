@@ -12,6 +12,9 @@ htmlcov/
 data/upstreams/*
 !data/upstreams/.gitkeep
 
+data/lenses/*
+!data/lenses/.gitkeep
+
 results/*
 !results/.gitkeep
 

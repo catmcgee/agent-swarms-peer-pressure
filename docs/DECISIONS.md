@@ -13,3 +13,4 @@ Design decisions and deviations are append-only. Superseded decisions remain vis
 | 2026-08-27 | Pin upstream versions and fetch them into ignored directories. | This preserves attribution, keeps the repository small, and makes provenance explicit. |
 | 2026-08-27 | Use a provisional 12-task pilot balanced across six categories and twelve primary domains. | The pilot needs operational and trigger diversity before scaling task count. |
 | 2026-08-27 | Add J-space/R-space analysis as a separate exploratory Stage C. | Matched lenses may distinguish erasure of boundary recognition from downstream override, but adding them cannot redefine the frozen behavioral endpoints. |
+| 2026-08-27 | Pin Qwen3.5-9B and the matched J/R artifacts for Stage C. | The 9B model is the lowest-cost published pair above the smallest dense model for which no R-lens advantage was reported; byte-range inspection verifies the matched recipes without downloading tensor storage. |

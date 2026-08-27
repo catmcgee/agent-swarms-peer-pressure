@@ -28,6 +28,14 @@ class LensKind(StrEnum):
 
 
 @dataclass(frozen=True)
+class ArtifactFile:
+    lens: LensKind
+    path: str
+    size: int
+    sha256: str
+
+
+@dataclass(frozen=True)
 class Concept:
     name: str
     terms: tuple[str, ...]
@@ -54,6 +62,7 @@ class MechanisticConfig:
     artifact_repo: str
     artifact_revision: str
     artifact_subdir: str
+    artifact_files: tuple[ArtifactFile, ...]
     task_families: int
     seeds: tuple[int, ...]
     feasibility: tuple[str, ...]
@@ -198,6 +207,7 @@ def load_mechanistic_config(path: str | Path) -> MechanisticConfig:
     base = config_path.parent
     model = raw.get("model") or {}
     artifact = raw.get("lens_artifact") or {}
+    artifact_files = artifact.get("files") or {}
     factors = raw.get("factors") or {}
 
     def resolved(value: str) -> str:
@@ -214,6 +224,15 @@ def load_mechanistic_config(path: str | Path) -> MechanisticConfig:
         artifact_repo=str(artifact.get("repo", "")),
         artifact_revision=str(artifact.get("revision", "")),
         artifact_subdir=str(artifact.get("subdir", "")),
+        artifact_files=tuple(
+            ArtifactFile(
+                lens=LensKind(str(lens)),
+                path=str(item.get("path", "")),
+                size=int(item.get("size", 0)),
+                sha256=str(item.get("sha256", "")),
+            )
+            for lens, item in artifact_files.items()
+        ),
         task_families=int(raw.get("task_families", 0)),
         seeds=tuple(int(seed) for seed in raw.get("seeds", [])),
         feasibility=tuple(str(item) for item in factors.get("feasibility", [])),
@@ -232,6 +251,14 @@ def validate_mechanistic_config(config: MechanisticConfig) -> None:
         raise ValueError("mechanistic model ID is required")
     if not config.artifact_repo or not config.artifact_revision or not config.artifact_subdir:
         raise ValueError("lens artifact repo, revision, and subdir are required")
+    artifact_lenses = {item.lens for item in config.artifact_files}
+    if artifact_lenses != {LensKind.J, LensKind.R} or len(config.artifact_files) != 2:
+        raise ValueError("exactly one J-lens and one R-lens artifact file are required")
+    for item in config.artifact_files:
+        if not item.path or item.size < 1:
+            raise ValueError("artifact files require a path and positive size")
+        if len(item.sha256) != 64 or any(char not in "0123456789abcdef" for char in item.sha256):
+            raise ValueError("artifact file sha256 must be 64 lowercase hexadecimal characters")
     if config.task_families < 1 or not config.seeds:
         raise ValueError("task_families and seeds must be nonempty")
     if not all((config.feasibility, config.peer_norm, config.investment, config.budget_rounds)):

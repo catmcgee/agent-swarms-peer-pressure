@@ -39,13 +39,14 @@ def _record(trial_id: str, norm: str, anchor: str, boundary: float) -> LensAncho
     )
 
 
-def test_discovery_config_has_planned_size_and_is_not_ready() -> None:
+def test_discovery_config_has_planned_size_and_pinned_provenance() -> None:
     config = load_mechanistic_config(ROOT / "configs/jr_lens.yaml")
     registry = load_concept_registry(config.registry_path)
 
     assert config.planned_trajectories == 216
-    assert config.ready is False
-    assert config.unresolved_fields == ("model_revision", "tokenizer_revision")
+    assert config.ready is True
+    assert config.unresolved_fields == ()
+    assert {item.lens.value for item in config.artifact_files} == {"j", "r"}
     assert "boundary_denial" in registry.names
 
 

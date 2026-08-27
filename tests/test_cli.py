@@ -45,6 +45,7 @@ def test_cost_and_lens_validation_commands_produce_separate_reports(tmp_path: Pa
     assert cost_report["estimated_cost_usd"] == 0.1
     assert "planned_trajectories" not in cost_report
     assert lens_report["planned_trajectories"] == 216
+    assert lens_report["ready"] is True
     assert "estimated_cost_usd" not in lens_report
 
 

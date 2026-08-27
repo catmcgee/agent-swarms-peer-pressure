@@ -8,6 +8,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from .artifacts import inspect_lens_pair
 from .boards import BoardBank
 from .config import (
     load_experiment_config,
@@ -65,6 +66,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--from-anchor", choices=tuple(Anchor), default=Anchor.POST_RECOGNITION
     )
     lens_compare.add_argument("--to-anchor", choices=tuple(Anchor), default=Anchor.POST_PEER)
+
+    lens_provenance = subparsers.add_parser(
+        "lens-provenance", help="verify remote J/R-lens artifacts without downloading tensors"
+    )
+    lens_provenance.add_argument("--config", required=True)
     return parser
 
 
@@ -82,6 +88,8 @@ def main(argv: list[str] | None = None) -> None:
         _lens_validate(args.config)
     elif args.command == "lens-compare":
         _lens_compare(args)
+    elif args.command == "lens-provenance":
+        _lens_provenance(args.config)
 
 
 def _load(config_path: str):
@@ -245,6 +253,15 @@ def _lens_validate(config_path: str) -> None:
                     "repo": config.artifact_repo,
                     "revision": config.artifact_revision,
                     "subdir": config.artifact_subdir,
+                    "files": [
+                        {
+                            "lens": item.lens.value,
+                            "path": item.path,
+                            "size": item.size,
+                            "sha256": item.sha256,
+                        }
+                        for item in config.artifact_files
+                    ],
                 },
                 "anchors": [anchor.value for anchor in config.anchors],
                 "concepts": list(registry.names),
@@ -268,6 +285,11 @@ def _lens_compare(args: argparse.Namespace) -> None:
         to_anchor=Anchor(args.to_anchor),
     )
     print(json.dumps(result, indent=2, sort_keys=True))
+
+
+def _lens_provenance(config_path: str) -> None:
+    config = load_mechanistic_config(config_path)
+    print(json.dumps(inspect_lens_pair(config), indent=2, sort_keys=True))
 
 
 def _zero_usage():

@@ -97,7 +97,9 @@ Stop Stage C before scaling if any gate fails: no behavioral reversal, incompati
 
 ## Implemented data contract
 
-`configs/jr_lens.yaml` encodes the 216-trajectory discovery matrix and pins the lens artifact revision. The model and tokenizer revisions remain unresolved until the artifact provenance is checked; `swarmstop lens-validate` exposes this as `ready: false` rather than silently assuming compatibility.
+`configs/jr_lens.yaml` encodes the 216-trajectory discovery matrix and pins the model, tokenizer, lens artifact revision, file sizes, and file hashes. The lens files identify the model but omit its revision. The selected model commit is the last content upload before the lens artifact was published; subsequent model-repository changes affected only the README. This is strong content-equivalence evidence, but the original fitting revision cannot be recovered cryptographically from the artifact.
+
+`swarmstop lens-provenance` verifies the remote hashes and sizes, extracts only the small metadata member from each approximately 1.04 GB archive using byte-range requests, and checks that the pair agrees on model, dimensions, source layers, corpus, sample count, target layer, and fitting settings. It also checks the pinned model configuration against the lens dimensions. No tensor storage is downloaded by this command.
 
 Each JSONL readout record is keyed by trial, task family, condition, anchor, and layer. It must include exact model/tokenizer provenance, optional activation storage metadata, and complete concept scores for every included lens. `swarmstop lens-compare` computes the within-trial T2-minus-T1 change first and then the descriptive proceed-minus-stop contrast separately for every layer, lens, and frozen concept. It performs no significance testing and is not a substitute for the held-out or causal analyses above.
 

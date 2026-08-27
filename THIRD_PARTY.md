@@ -19,4 +19,17 @@ SwarmStop does not vendor benchmark source or data. The fetch script downloads p
 - Paper source license: CC BY 4.0
 - Citation: Celebi, *Can Is Not May: Authority Models for Governable AI Agents*, 2026.
 
+## Qwen 3.5 and workspace lenses
+
+- Model: https://huggingface.co/Qwen/Qwen3.5-9B
+- Pinned model and tokenizer content commit: `ef3d031a90d340a92d71f83ec17d054e100ce713`
+- Model license: Apache 2.0
+- Lens artifacts: https://huggingface.co/camilablank/workspace-lenses
+- Pinned lens repository commit: `d740106d1e0f95456dc8718fba2895e9c8ffd6ef`
+- Lens artifact license: MIT
+- J-lens SHA-256: `e9396f37eec4c031462b24559b0360027ac45d5944628214301b8e54883b58f3`
+- R-lens SHA-256: `76c7372c52b453958e064e4d366fa868cb3733460728236cf2e9fa6bdb632d52`
+
+The lens archives identify the model but do not record its repository revision. The pinned model commit is the last content upload before the lens release; the only subsequent repository change before this project pinned it was to `README.md`. This supports content equivalence but is not a cryptographic record of the authors' local model checkout.
+
 The adapter modules are clean interfaces written for SwarmStop. If upstream code is later copied or modified, preserve the relevant copyright and license notice next to that material.
