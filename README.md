@@ -32,6 +32,8 @@ The repository currently contains:
 
 No empirical claims should be made from the included synthetic smoke tasks. They exist only to validate the machinery.
 
+The exploratory mechanistic phase now also has a frozen concept registry, a four-anchor record schema, provenance checks, and an offline proceed-versus-stop contrast. Model and tokenizer revisions remain deliberately unresolved until they can be verified against the selected lens artifact.
+
 ## Quick start
 
 Requires Python 3.11 or newer.
@@ -44,6 +46,7 @@ pip install -e '.[dev]'
 swarmstop validate --config configs/smoke.yaml
 swarmstop run --config configs/smoke.yaml
 swarmstop summarize --results results/smoke/trials.jsonl
+swarmstop lens-validate --config configs/jr_lens.yaml
 pytest
 ```
 

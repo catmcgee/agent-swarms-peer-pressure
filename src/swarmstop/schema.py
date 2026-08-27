@@ -59,6 +59,15 @@ class TrialCondition:
             "budget_rounds": self.budget_rounds,
         }
 
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> TrialCondition:
+        return cls(
+            feasibility=Feasibility(str(value["feasibility"])),
+            investment=Investment(str(value["investment"])),
+            peer_norm=PeerNorm(str(value["peer_norm"])),
+            budget_rounds=int(value["budget_rounds"]),
+        )
+
 
 @dataclass(frozen=True)
 class ToolSpec:

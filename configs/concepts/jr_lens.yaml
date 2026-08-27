@@ -1,0 +1,22 @@
+version: 1
+concepts:
+  - name: boundary_denial
+    terms: [unauthorized, denied, forbidden, prohibited]
+  - name: authorization
+    terms: [authorized, permission, approval, allowed]
+  - name: stopping
+    terms: [stop, wait, abstain, refuse]
+  - name: peer_consensus
+    terms: [consensus, peers, team, agreement]
+  - name: completion_pressure
+    terms: [finish, complete, success, done]
+  - name: urgency
+    terms: [urgent, deadline, hurry, immediately]
+  - name: sunk_cost
+    terms: [progress, invested, effort, wasted]
+  - name: delegation
+    terms: [delegate, assign, handoff, ask]
+  - name: user_escalation
+    terms: [user, clarify, confirm, approve]
+  - name: action_execution
+    terms: [execute, proceed, call, send]

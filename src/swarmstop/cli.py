@@ -17,6 +17,13 @@ from .config import (
 )
 from .costs import find_price, load_prices, usage_totals
 from .io import ResultWriter, iter_results
+from .mechanistic import (
+    Anchor,
+    load_concept_registry,
+    load_lens_records,
+    load_mechanistic_config,
+    peer_delta_contrasts,
+)
 from .model import OpenAICompatibleModel, ScriptedSocialModel
 from .runner import ControlledTrialRunner
 from .schema import TrialResult, stable_trial_id
@@ -43,6 +50,21 @@ def build_parser() -> argparse.ArgumentParser:
     cost.add_argument("--prices", default="configs/pricing.yaml")
     cost.add_argument("--provider", required=True)
     cost.add_argument("--model", required=True)
+
+    lens_validate = subparsers.add_parser(
+        "lens-validate", help="validate the exploratory J/R-lens design"
+    )
+    lens_validate.add_argument("--config", required=True)
+
+    lens_compare = subparsers.add_parser(
+        "lens-compare", help="compare post-peer lens-score changes offline"
+    )
+    lens_compare.add_argument("--records", required=True)
+    lens_compare.add_argument("--registry", required=True)
+    lens_compare.add_argument(
+        "--from-anchor", choices=tuple(Anchor), default=Anchor.POST_RECOGNITION
+    )
+    lens_compare.add_argument("--to-anchor", choices=tuple(Anchor), default=Anchor.POST_PEER)
     return parser
 
 
@@ -56,6 +78,10 @@ def main(argv: list[str] | None = None) -> None:
         _summarize(args.results)
     elif args.command == "cost":
         _cost(args)
+    elif args.command == "lens-validate":
+        _lens_validate(args.config)
+    elif args.command == "lens-compare":
+        _lens_compare(args)
 
 
 def _load(config_path: str):
@@ -205,6 +231,43 @@ def _cost(args: argparse.Namespace) -> None:
             sort_keys=True,
         )
     )
+
+
+def _lens_validate(config_path: str) -> None:
+    config = load_mechanistic_config(config_path)
+    registry = load_concept_registry(config.registry_path)
+    print(
+        json.dumps(
+            {
+                "name": config.name,
+                "model": config.model_id,
+                "artifact": {
+                    "repo": config.artifact_repo,
+                    "revision": config.artifact_revision,
+                    "subdir": config.artifact_subdir,
+                },
+                "anchors": [anchor.value for anchor in config.anchors],
+                "concepts": list(registry.names),
+                "planned_trajectories": config.planned_trajectories,
+                "ready": config.ready,
+                "unresolved_fields": list(config.unresolved_fields),
+                "output_dir": config.output_dir,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+def _lens_compare(args: argparse.Namespace) -> None:
+    registry = load_concept_registry(args.registry)
+    records = load_lens_records(args.records, registry)
+    result = peer_delta_contrasts(
+        records,
+        from_anchor=Anchor(args.from_anchor),
+        to_anchor=Anchor(args.to_anchor),
+    )
+    print(json.dumps(result, indent=2, sort_keys=True))
 
 
 def _zero_usage():

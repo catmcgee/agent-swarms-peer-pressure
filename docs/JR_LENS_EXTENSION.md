@@ -95,6 +95,12 @@ Use published lens artifacts rather than refitting when checkpoint provenance ma
 
 Stop Stage C before scaling if any gate fails: no behavioral reversal, incompatible artifacts, no held-out readout improvement over baselines, or no causal effect beyond matched controls.
 
+## Implemented data contract
+
+`configs/jr_lens.yaml` encodes the 216-trajectory discovery matrix and pins the lens artifact revision. The model and tokenizer revisions remain unresolved until the artifact provenance is checked; `swarmstop lens-validate` exposes this as `ready: false` rather than silently assuming compatibility.
+
+Each JSONL readout record is keyed by trial, task family, condition, anchor, and layer. It must include exact model/tokenizer provenance, optional activation storage metadata, and complete concept scores for every included lens. `swarmstop lens-compare` computes the within-trial T2-minus-T1 change first and then the descriptive proceed-minus-stop contrast separately for every layer, lens, and frozen concept. It performs no significance testing and is not a substitute for the held-out or causal analyses above.
+
 ## Sources
 
 - R-lens post: https://www.alignmentforum.org/posts/nv8oedrnLXKRzNEL9/r-lens-making-j-lens-more-faithful-on-early-layers
