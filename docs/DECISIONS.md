@@ -12,3 +12,4 @@ Design decisions and deviations are append-only. Superseded decisions remain vis
 | 2026-08-27 | Analyze a common two-round horizon and use survival analysis for longer budgets. | Raw cumulative risk is mechanically higher when more action opportunities exist. |
 | 2026-08-27 | Pin upstream versions and fetch them into ignored directories. | This preserves attribution, keeps the repository small, and makes provenance explicit. |
 | 2026-08-27 | Use a provisional 12-task pilot balanced across six categories and twelve primary domains. | The pilot needs operational and trigger diversity before scaling task count. |
+| 2026-08-27 | Add J-space/R-space analysis as a separate exploratory Stage C. | Matched lenses may distinguish erasure of boundary recognition from downstream override, but adding them cannot redefine the frozen behavioral endpoints. |

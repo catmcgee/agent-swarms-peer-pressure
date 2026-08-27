@@ -78,3 +78,13 @@ One shared inference service may serve all contexts. Separate GPUs are required 
 - Reusing a small board bank creates dependence; board identity must be modeled.
 - Longer budgets mechanically increase opportunities; use a common horizon and survival analysis.
 - Peer language may differ in more than behavior; match boards and repeat with multiple realizations.
+
+## Stage C: exploratory J-space/R-space extension
+
+For one open-weight model with compatible matched J-lens and R-lens artifacts, a focused white-box study will ask what changes between explicit boundary recognition and the first post-peer action. The central distinction is between:
+
+1. **representation erosion:** peer-proceed evidence weakens the model's authorization or stopping representation;
+2. **downstream override:** the boundary representation remains present, but peer-consensus, completion, or action representations become more influential; and
+3. **unlocalized behavior:** the peer effect is not captured reliably by either lens and may lie outside the verbalizable subspace or reflect a lens artifact.
+
+The study will compare matched J- and R-lens readouts before and after the authority checkpoint and peer board, then test candidate directions with matched causal patching or ablation controls. It is an exploratory mechanistic appendix, not an additional confirmatory endpoint. Its sampling, controls, interpretation rules, and compute gates are specified in [JR_LENS_EXTENSION.md](JR_LENS_EXTENSION.md).

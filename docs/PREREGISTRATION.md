@@ -145,4 +145,6 @@ All tools mutate simulated state. No benchmark environment may contain live cred
 
 ## Amendments
 
-None.
+### 2026-08-27 — exploratory mechanistic appendix
+
+Add a white-box J-space/R-space study on a focused subset after the behavioral experiment. This appendix asks whether peer contact erodes an internal boundary representation or instead overrides a preserved boundary representation downstream. It does not change the confirmatory hypotheses, behavioral outcomes, exclusion rules, sample-size calculation, or analysis population. Lens readouts, representation geometry, prediction analyses, and activation interventions will be labeled exploratory and reported regardless of whether they agree with the behavioral result.

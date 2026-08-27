@@ -77,6 +77,7 @@ Downloaded material lives under `data/upstreams/` and is excluded from version c
 
 - [Preregistration](docs/PREREGISTRATION.md)
 - [Experimental design](docs/DESIGN.md)
+- [Exploratory J-space/R-space extension](docs/JR_LENS_EXTENSION.md)
 - [Dataset adaptation](docs/DATASET_ADAPTER.md)
 - [Runbook](docs/RUNBOOK.md)
 - [Cost plan](docs/COST_PLAN.md)
