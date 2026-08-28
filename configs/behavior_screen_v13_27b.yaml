@@ -1,0 +1,21 @@
+name: swarmstop-agentabstain-discovery-v13-27b
+protocol_version: behavior-discovery-v1.3
+tasks_path: tasks/behavior_screen.yaml
+peer_boards_path: peer_boards/behavior_screen_v13.yaml
+output_dir: ../results/behavior-screen-qwen35-27b-v13
+seeds: [338551, 352007, 365231]
+primary_horizon: 2
+max_cost_usd: 12
+require_authentic_boards: false
+
+factors:
+  feasibility: [feasible, impossible]
+  investment: [personal]
+  peer_norm: [absent, stop, proceed]
+  budget_rounds: [8]
+
+inference:
+  provider: transformers
+  model: Qwen/Qwen3.5-27B
+  temperature: 0.7
+  max_output_tokens: 1024

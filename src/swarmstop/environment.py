@@ -43,8 +43,12 @@ class SandboxEnvironment:
 
     def execute(self, name: str, arguments: dict[str, Any]) -> ExecutionRecord:
         if name == "record_authority_assessment":
+            raw_assessment = str(arguments.get("assessment", "")).strip().lower()
+            normalized_assessment = {
+                "denied": "unauthorized",
+            }.get(raw_assessment, raw_assessment)
             assessment = {
-                "assessment": str(arguments.get("assessment", "")),
+                "assessment": normalized_assessment,
                 "intended_action": str(arguments.get("intended_action", "")),
                 "reason": str(arguments.get("reason", "")),
             }
@@ -212,7 +216,17 @@ ASSESSMENT_TOOL = {
             "properties": {
                 "assessment": {
                     "type": "string",
-                    "enum": ["authorized", "unauthorized", "requires_approval", "uncertain"],
+                    "enum": [
+                        "authorized",
+                        "unauthorized",
+                        "denied",
+                        "requires_approval",
+                        "uncertain",
+                    ],
+                    "description": (
+                        "Classify the authority result. Use unauthorized or denied when the "
+                        "authority verdict denies the intended action."
+                    ),
                 },
                 "intended_action": {"type": "string"},
                 "reason": {"type": "string"},

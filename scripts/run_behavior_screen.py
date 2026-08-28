@@ -32,23 +32,28 @@ from swarmstop.schema import (
     stable_trial_id,
 )
 
-MODEL_REVISION = "ef3d031a90d340a92d71f83ec17d054e100ce713"
-RECOGNITION_PREFLIGHT_SEED = 181081
-ACTION_CANARY_SEED = 249017
+PINNED_MODEL_REVISIONS = {
+    "Qwen/Qwen3.5-9B": "ef3d031a90d340a92d71f83ec17d054e100ce713",
+    "Qwen/Qwen3.5-27B": "fc05daec18b0a78c049392ed2e771dde82bdf654",
+}
+RECOGNITION_PREFLIGHT_SEED = 310019
+ACTION_CANARY_SEED = 324503
+CANARY_SENDERS = ("peer-v", "peer-w", "peer-x")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/behavior_screen.yaml")
-    parser.add_argument("--output-root", default="results/behavior-screen-qwen35-9b")
-    parser.add_argument("--model-revision", default=MODEL_REVISION)
+    parser.add_argument("--output-root", required=True)
+    parser.add_argument("--model-revision")
     parser.add_argument("--hourly-price", type=float, required=True)
-    parser.add_argument("--max-wall-seconds", type=int, default=10_800)
+    parser.add_argument("--max-wall-seconds", type=int, default=42_000)
     parser.add_argument("--max-cost-usd", type=float)
     args = parser.parse_args()
 
     started = time.monotonic()
     config = load_experiment_config(args.config)
+    model_revision = _resolve_model_revision(config.model, args.model_revision)
     tasks = load_tasks(config.tasks_path)
     boards = load_peer_boards(config.peer_boards_path)
     validate_experiment(config, tasks, boards)
@@ -58,7 +63,7 @@ def main() -> None:
     if max_cost is None:
         raise ValueError("a hard cost cap is required")
 
-    model = TransformersToolModel(config.model, revision=args.model_revision)
+    model = TransformersToolModel(config.model, revision=model_revision)
     _validate_board_pairs(boards, model.tokenizer)
     root = Path(args.output_root).resolve()
     root.mkdir(parents=True, exist_ok=True)
@@ -66,7 +71,7 @@ def main() -> None:
         "config_sha256": file_sha256(args.config),
         "tasks_sha256": file_sha256(config.tasks_path),
         "peer_boards_sha256": file_sha256(config.peer_boards_path),
-        "model_revision": args.model_revision,
+        "model_revision": model_revision,
         "hourly_price_usd": args.hourly_price,
         "max_cost_usd": max_cost,
         "max_wall_seconds": args.max_wall_seconds,
@@ -76,7 +81,7 @@ def main() -> None:
 
     recognition_config = _recognition_config(config, root)
     recognition_fingerprint = experiment_fingerprint(
-        recognition_config, tasks, [], model_revision=args.model_revision
+        recognition_config, tasks, [], model_revision=model_revision
     )
     recognition_writer = ResultWriter(
         recognition_config.output_dir,
@@ -87,7 +92,7 @@ def main() -> None:
     recognition_runner = ControlledTrialRunner(
         temperature=config.temperature,
         max_output_tokens=config.max_output_tokens,
-        model_revision=args.model_revision,
+        model_revision=model_revision,
         primary_horizon=config.primary_horizon,
         run_fingerprint=recognition_fingerprint,
     )
@@ -137,7 +142,7 @@ def main() -> None:
         protocol_version=config.protocol_version + "__authorized-controls",
     )
     control_fingerprint = experiment_fingerprint(
-        control_config, controls, [], model_revision=args.model_revision
+        control_config, controls, [], model_revision=model_revision
     )
     control_writer = ResultWriter(
         control_config.output_dir,
@@ -148,7 +153,7 @@ def main() -> None:
     control_runner = ControlledTrialRunner(
         temperature=config.temperature,
         max_output_tokens=config.max_output_tokens,
-        model_revision=args.model_revision,
+        model_revision=model_revision,
         primary_horizon=config.primary_horizon,
         run_fingerprint=control_fingerprint,
     )
@@ -222,7 +227,7 @@ def main() -> None:
         protocol_version=config.protocol_version + "__action-canary",
     )
     canary_fingerprint = experiment_fingerprint(
-        canary_config, tasks, canary_boards, model_revision=args.model_revision
+        canary_config, tasks, canary_boards, model_revision=model_revision
     )
     canary_writer = ResultWriter(
         canary_config.output_dir,
@@ -233,7 +238,7 @@ def main() -> None:
     canary_runner = ControlledTrialRunner(
         temperature=config.temperature,
         max_output_tokens=config.max_output_tokens,
-        model_revision=args.model_revision,
+        model_revision=model_revision,
         primary_horizon=config.primary_horizon,
         run_fingerprint=canary_fingerprint,
     )
@@ -274,7 +279,7 @@ def main() -> None:
 
     main_config = replace(config, output_dir=str(root / "discovery"))
     main_fingerprint = experiment_fingerprint(
-        main_config, tasks, boards, model_revision=args.model_revision
+        main_config, tasks, boards, model_revision=model_revision
     )
     writer = ResultWriter(
         main_config.output_dir,
@@ -285,7 +290,7 @@ def main() -> None:
     runner = ControlledTrialRunner(
         temperature=config.temperature,
         max_output_tokens=config.max_output_tokens,
-        model_revision=args.model_revision,
+        model_revision=model_revision,
         primary_horizon=config.primary_horizon,
         run_fingerprint=main_fingerprint,
     )
@@ -344,6 +349,16 @@ def main() -> None:
     _write_json(root / "analysis.json", final)
     _write_json(root / "run_state.json", final)
     print(json.dumps(final, indent=2, sort_keys=True))
+
+
+def _resolve_model_revision(model_id: str, override: str | None) -> str:
+    pinned_revision = PINNED_MODEL_REVISIONS.get(model_id)
+    if pinned_revision and override and override != pinned_revision:
+        raise ValueError("--model-revision cannot override the registered model pin")
+    model_revision = pinned_revision or override
+    if not model_revision:
+        raise ValueError("--model-revision is required for an unregistered model")
+    return model_revision
 
 
 def _run_one(
@@ -429,15 +444,8 @@ def _make_canary_boards(tasks: list[Any], bank: BoardBank) -> list[PeerBoard]:
                     id=board.id + "__action_canary",
                     pair_id=(board.pair_id or board.id) + "__action_canary",
                     messages=tuple(
-                        replace(
-                            message,
-                            sender={
-                                "peer-a": "peer-j",
-                                "peer-b": "peer-k",
-                                "peer-c": "peer-l",
-                            }.get(message.sender, message.sender),
-                        )
-                        for message in board.messages
+                        replace(message, sender=CANARY_SENDERS[index])
+                        for index, message in enumerate(board.messages)
                     ),
                     generator={**board.generator, "purpose": "action_canary"},
                 )

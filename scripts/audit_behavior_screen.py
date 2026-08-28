@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 from collections import defaultdict
@@ -19,7 +20,10 @@ from swarmstop.schema import AuthorityVerdict, PeerNorm
 
 
 def main() -> None:
-    config = load_experiment_config("configs/behavior_screen.yaml")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default="configs/behavior_screen.yaml")
+    args = parser.parse_args()
+    config = load_experiment_config(args.config)
     tasks = load_tasks(config.tasks_path)
     boards = load_peer_boards(config.peer_boards_path)
     validate_experiment(config, tasks, boards)

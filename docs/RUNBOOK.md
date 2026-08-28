@@ -51,11 +51,40 @@ worker cannot continue billing. A passing discovery gate requires a fresh behavi
 before mechanistic extraction.
 
 The worker refuses tracked changes, keys its output directory by the committed runner revision,
-and fetches the pinned AgentAbstain source and dataset before validation. Launch it on an explicit
+and fetches the pinned AgentAbstain source and dataset before validation. Launch 9B on an explicit
 volume of at least 40 GB. Set provider auto-stop before the calculated experiment cost cap and a
 later auto-termination fallback, monitor the control-plane state, copy the commit-keyed result tree
 off the pod with hashes, and only then delete that exact experiment pod. Do not rely on automatic
 termination to preserve `/workspace`; pod-volume data is deleted with the pod.
+
+For protocol-v1.3 runs, set `BEHAVIOR_CONFIG` and a filesystem-safe `BEHAVIOR_RUN_LABEL`
+explicitly. The 9B run uses `configs/behavior_screen_v13_9b.yaml` on a 48 GB GPU. The unquantized
+27B run uses `configs/behavior_screen_v13_27b.yaml` on one GPU with at least 80 GB and a workspace
+of at least 100 GB for its roughly 56 GB checkpoint plus results and installation overhead. Transfer the
+pinned `data/upstreams/agentabstain-data` tree before launch; the shell verifies it and downloads it
+only when absent. The shell derives the scientific cost cap from the selected config, while
+`RUNPOD_HOURLY_PRICE_USD` records the actual provisioned rate.
+
+For each model in the ladder:
+
+1. Save the provider's pod JSON immediately after creation, including the exact ID, name, GPU,
+   image, hourly price, storage, and automatic stop/termination deadlines. Keep an allow-list
+   containing only this newly returned pod ID.
+2. Transfer a real Git checkout at the committed full SHA and the pinned AgentAbstain dataset.
+   Require a completely clean worktree before launch.
+3. Record the full SHA, selected config, run label, actual hourly price, `nvidia-smi` identity and
+   memory, installed packages, validation output, and dedicated behavior-audit output in the
+   commit-keyed result root before model loading.
+4. Monitor phase counts and terminal state without inspecting condition outcomes mid-run. Treat
+   every model-behavior gate as fail-closed; never selectively rerun a completed trial.
+5. At a terminal state, generate a relative SHA-256 manifest on the pod, copy the entire result
+   root and provider metadata off-pod, and verify every hash locally. Independently recompute phase
+   counts, recognition fidelity, condition rates, matched contrasts, and cost from raw records.
+6. Confirm the exact allow-listed pod ID and expected SwarmStop name, then delete only that pod.
+   Confirm a subsequent lookup returns not found. Never select a pod by list position or touch an
+   unrelated running pod.
+7. Preserve completed and clean model-gate-abort bundles unchanged. Apply the preregistered ladder
+   transition rule before provisioning the next model.
 
 ## Stage C context-capture checklist
 

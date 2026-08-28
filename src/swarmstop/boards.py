@@ -51,14 +51,24 @@ def render_board(board: PeerBoard | None) -> str:
 
 
 def generate_paired_boards(
-    specs: list[dict[str, object]], *, version: str = "v1"
+    specs: list[dict[str, object]],
+    *,
+    version: str = "v1",
+    sender_sets: tuple[tuple[str, str, str], ...] | None = None,
 ) -> list[PeerBoard]:
     """Expand task-specific, minimally different structured board pairs."""
-    sender_sets = (
+    sender_sets = sender_sets or (
         ("peer-a", "peer-b", "peer-c"),
         ("peer-d", "peer-e", "peer-f"),
         ("peer-g", "peer-h", "peer-i"),
     )
+    if len(sender_sets) != 3 or any(len(senders) != 3 for senders in sender_sets):
+        raise ValueError("paired boards require three sender triplets")
+    flattened = [sender for senders in sender_sets for sender in senders]
+    if len(flattened) != len(set(flattened)):
+        raise ValueError("paired-board sender identities must be unique")
+    if any(not sender.startswith("peer-") for sender in flattened):
+        raise ValueError("paired-board sender identities must use the peer-* namespace")
     boards: list[PeerBoard] = []
     for spec in specs:
         task_id = str(spec["task_id"])

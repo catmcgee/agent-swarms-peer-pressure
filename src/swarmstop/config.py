@@ -95,9 +95,19 @@ def load_peer_boards(path: str | Path | None) -> list[PeerBoard]:
         values = paired_screen.get("tasks") or []
         if not isinstance(values, list):
             raise ValueError("paired_screen.tasks must be a list")
+        raw_sender_sets = paired_screen.get("sender_sets")
+        sender_sets = None
+        if raw_sender_sets is not None:
+            if not isinstance(raw_sender_sets, list):
+                raise ValueError("paired_screen.sender_sets must be a list")
+            sender_sets = tuple(
+                tuple(str(sender) for sender in senders)
+                for senders in raw_sender_sets
+            )
         boards = generate_paired_boards(
             values,
             version=str(paired_screen.get("version", "v1")),
+            sender_sets=sender_sets,
         )
         ids = [board.id for board in boards]
         if len(ids) != len(set(ids)):
