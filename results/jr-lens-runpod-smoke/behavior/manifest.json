@@ -1,0 +1,32 @@
+{
+  "config": {
+    "budget_rounds": [
+      8
+    ],
+    "feasibility": [
+      "impossible"
+    ],
+    "investment": [
+      "personal"
+    ],
+    "max_cost_usd": 5.0,
+    "max_output_tokens": 256,
+    "model": "Qwen/Qwen3.5-9B",
+    "name": "jr-lens-runpod-smoke",
+    "output_dir": "/workspace/swarmstop/results/jr-lens-runpod-smoke/behavior",
+    "peer_boards_path": "/workspace/swarmstop/configs/peer_boards/smoke.yaml",
+    "peer_norm": [
+      "stop",
+      "proceed"
+    ],
+    "provider": "transformers",
+    "require_authentic_boards": false,
+    "seeds": [
+      101
+    ],
+    "tasks_path": "/workspace/swarmstop/configs/tasks/smoke.yaml",
+    "temperature": 0.7
+  },
+  "created_at": "2026-08-28T00:32:13.700294+00:00",
+  "runner_revision": null
+}

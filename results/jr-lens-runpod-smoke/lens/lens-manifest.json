@@ -1,0 +1,485 @@
+{
+  "concept_tokens": {
+    "action_execution": [
+      {
+        "form": "execute",
+        "term": "execute",
+        "token_id": 9951
+      },
+      {
+        "form": " execute",
+        "term": "execute",
+        "token_id": 8754
+      },
+      {
+        "form": " proceed",
+        "term": "proceed",
+        "token_id": 10046
+      },
+      {
+        "form": "call",
+        "term": "call",
+        "token_id": 6450
+      },
+      {
+        "form": " call",
+        "term": "call",
+        "token_id": 1562
+      },
+      {
+        "form": "send",
+        "term": "send",
+        "token_id": 6472
+      },
+      {
+        "form": " send",
+        "term": "send",
+        "token_id": 3502
+      }
+    ],
+    "authorization": [
+      {
+        "form": "authorized",
+        "term": "authorized",
+        "token_id": 18510
+      },
+      {
+        "form": " authorized",
+        "term": "authorized",
+        "token_id": 18069
+      },
+      {
+        "form": "permission",
+        "term": "permission",
+        "token_id": 21915
+      },
+      {
+        "form": " permission",
+        "term": "permission",
+        "token_id": 7634
+      },
+      {
+        "form": "approval",
+        "term": "approval",
+        "token_id": 52614
+      },
+      {
+        "form": " approval",
+        "term": "approval",
+        "token_id": 14014
+      },
+      {
+        "form": "allowed",
+        "term": "allowed",
+        "token_id": 20327
+      },
+      {
+        "form": " allowed",
+        "term": "allowed",
+        "token_id": 5252
+      }
+    ],
+    "boundary_denial": [
+      {
+        "form": " unauthorized",
+        "term": "unauthorized",
+        "token_id": 42994
+      },
+      {
+        "form": " denied",
+        "term": "denied",
+        "token_id": 14390
+      },
+      {
+        "form": " forbidden",
+        "term": "forbidden",
+        "token_id": 35594
+      },
+      {
+        "form": " prohibited",
+        "term": "prohibited",
+        "token_id": 25091
+      }
+    ],
+    "completion_pressure": [
+      {
+        "form": "finish",
+        "term": "finish",
+        "token_id": 29166
+      },
+      {
+        "form": " finish",
+        "term": "finish",
+        "token_id": 6052
+      },
+      {
+        "form": "complete",
+        "term": "complete",
+        "token_id": 14311
+      },
+      {
+        "form": " complete",
+        "term": "complete",
+        "token_id": 4434
+      },
+      {
+        "form": "success",
+        "term": "success",
+        "token_id": 5453
+      },
+      {
+        "form": " success",
+        "term": "success",
+        "token_id": 2316
+      },
+      {
+        "form": "done",
+        "term": "done",
+        "token_id": 10128
+      },
+      {
+        "form": " done",
+        "term": "done",
+        "token_id": 2725
+      }
+    ],
+    "delegation": [
+      {
+        "form": "delegate",
+        "term": "delegate",
+        "token_id": 27310
+      },
+      {
+        "form": " delegate",
+        "term": "delegate",
+        "token_id": 12993
+      },
+      {
+        "form": "assign",
+        "term": "assign",
+        "token_id": 6766
+      },
+      {
+        "form": " assign",
+        "term": "assign",
+        "token_id": 9501
+      },
+      {
+        "form": "ask",
+        "term": "ask",
+        "token_id": 1038
+      },
+      {
+        "form": " ask",
+        "term": "ask",
+        "token_id": 2466
+      }
+    ],
+    "peer_consensus": [
+      {
+        "form": " consensus",
+        "term": "consensus",
+        "token_id": 23122
+      },
+      {
+        "form": " peers",
+        "term": "peers",
+        "token_id": 24236
+      },
+      {
+        "form": "team",
+        "term": "team",
+        "token_id": 8923
+      },
+      {
+        "form": " team",
+        "term": "team",
+        "token_id": 2015
+      },
+      {
+        "form": " agreement",
+        "term": "agreement",
+        "token_id": 8855
+      }
+    ],
+    "stopping": [
+      {
+        "form": "stop",
+        "term": "stop",
+        "token_id": 9215
+      },
+      {
+        "form": " stop",
+        "term": "stop",
+        "token_id": 2842
+      },
+      {
+        "form": "wait",
+        "term": "wait",
+        "token_id": 11158
+      },
+      {
+        "form": " wait",
+        "term": "wait",
+        "token_id": 3655
+      },
+      {
+        "form": " refuse",
+        "term": "refuse",
+        "token_id": 24272
+      }
+    ],
+    "sunk_cost": [
+      {
+        "form": "progress",
+        "term": "progress",
+        "token_id": 13954
+      },
+      {
+        "form": " progress",
+        "term": "progress",
+        "token_id": 4936
+      },
+      {
+        "form": " invested",
+        "term": "invested",
+        "token_id": 27085
+      },
+      {
+        "form": " effort",
+        "term": "effort",
+        "token_id": 4879
+      },
+      {
+        "form": " wasted",
+        "term": "wasted",
+        "token_id": 37543
+      }
+    ],
+    "urgency": [
+      {
+        "form": "urgent",
+        "term": "urgent",
+        "token_id": 82118
+      },
+      {
+        "form": " urgent",
+        "term": "urgent",
+        "token_id": 32556
+      },
+      {
+        "form": "deadline",
+        "term": "deadline",
+        "token_id": 76095
+      },
+      {
+        "form": " deadline",
+        "term": "deadline",
+        "token_id": 20771
+      },
+      {
+        "form": " hurry",
+        "term": "hurry",
+        "token_id": 45659
+      },
+      {
+        "form": " immediately",
+        "term": "immediately",
+        "token_id": 6849
+      }
+    ],
+    "user_escalation": [
+      {
+        "form": "user",
+        "term": "user",
+        "token_id": 846
+      },
+      {
+        "form": " user",
+        "term": "user",
+        "token_id": 1156
+      },
+      {
+        "form": " clarify",
+        "term": "clarify",
+        "token_id": 35932
+      },
+      {
+        "form": "confirm",
+        "term": "confirm",
+        "token_id": 13404
+      },
+      {
+        "form": " confirm",
+        "term": "confirm",
+        "token_id": 7440
+      },
+      {
+        "form": "approve",
+        "term": "approve",
+        "token_id": 47566
+      },
+      {
+        "form": " approve",
+        "term": "approve",
+        "token_id": 27237
+      }
+    ]
+  },
+  "created_at": "2026-08-28T00:33:18.994444+00:00",
+  "git_revision": null,
+  "gpu": "NVIDIA A40",
+  "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30
+  ],
+  "lens_files": {
+    "j": {
+      "cached_path": "/workspace/hf/hub/models--camilablank--workspace-lenses/snapshots/d740106d1e0f95456dc8718fba2895e9c8ffd6ef/qwen3.5-9b/j-lens/lens.pt",
+      "path": "qwen3.5-9b/j-lens/lens.pt",
+      "sha256": "e9396f37eec4c031462b24559b0360027ac45d5944628214301b8e54883b58f3"
+    },
+    "r": {
+      "cached_path": "/workspace/hf/hub/models--camilablank--workspace-lenses/snapshots/d740106d1e0f95456dc8718fba2895e9c8ffd6ef/qwen3.5-9b/r-lens/lens.pt",
+      "path": "qwen3.5-9b/r-lens/lens.pt",
+      "sha256": "76c7372c52b453958e064e4d366fa868cb3733460728236cf2e9fa6bdb632d52"
+    }
+  },
+  "lens_repo": "camilablank/workspace-lenses",
+  "lens_revision": "d740106d1e0f95456dc8718fba2895e9c8ffd6ef",
+  "model_id": "Qwen/Qwen3.5-9B",
+  "model_revision": "ef3d031a90d340a92d71f83ec17d054e100ce713",
+  "python": "3.12.3",
+  "rendered_snapshots": [
+    {
+      "snapshot_id": "report_publish_001__impossible__personal__stop__b8__s101__373d01fceeaa1d08::pre_authority",
+      "target_index": 569,
+      "text_sha256": "bd8cd0a274cd9a7393a12578bbb4c2579f2f779e355e75d5f5f3d9895d18c0a7",
+      "token_count": 570
+    },
+    {
+      "snapshot_id": "report_publish_001__impossible__personal__stop__b8__s101__373d01fceeaa1d08::post_recognition",
+      "target_index": 787,
+      "text_sha256": "2ceaaf3c70aa81a5d97e3e1c352f5c090e297656f1295176867adb9c55367b38",
+      "token_count": 788
+    },
+    {
+      "snapshot_id": "report_publish_001__impossible__personal__stop__b8__s101__373d01fceeaa1d08::post_peer",
+      "target_index": 883,
+      "text_sha256": "14dfbcffe69e4044c5ccb64af4109a2453d9019fd75b66997c5053d9495b2951",
+      "token_count": 884
+    },
+    {
+      "snapshot_id": "report_publish_001__impossible__personal__stop__b8__s101__373d01fceeaa1d08::action_decision",
+      "target_index": 976,
+      "text_sha256": "106fc8ff2e08430a8d1e90a14e4c12dab44ddf155c432899affefffbef02b0c2",
+      "token_count": 988
+    },
+    {
+      "snapshot_id": "report_publish_001__impossible__personal__proceed__b8__s101__8afb710cc5e325bd::pre_authority",
+      "target_index": 569,
+      "text_sha256": "bd8cd0a274cd9a7393a12578bbb4c2579f2f779e355e75d5f5f3d9895d18c0a7",
+      "token_count": 570
+    },
+    {
+      "snapshot_id": "report_publish_001__impossible__personal__proceed__b8__s101__8afb710cc5e325bd::post_recognition",
+      "target_index": 787,
+      "text_sha256": "2ceaaf3c70aa81a5d97e3e1c352f5c090e297656f1295176867adb9c55367b38",
+      "token_count": 788
+    },
+    {
+      "snapshot_id": "report_publish_001__impossible__personal__proceed__b8__s101__8afb710cc5e325bd::post_peer",
+      "target_index": 888,
+      "text_sha256": "1dfc98831843b373afdf22d54fce74b82d36b0570fac2a92bd468ad629c2ab83",
+      "token_count": 889
+    },
+    {
+      "snapshot_id": "report_publish_001__impossible__personal__proceed__b8__s101__8afb710cc5e325bd::action_decision",
+      "target_index": 888,
+      "text_sha256": "2224636b2fe9be1f8c69ca9e029fd3e5bbeead42d6e2710218212a2b15cbc510",
+      "token_count": 922
+    },
+    {
+      "snapshot_id": "homepage_deploy_001__impossible__personal__stop__b8__s101__dbf622dd059ddc31::pre_authority",
+      "target_index": 550,
+      "text_sha256": "6a0ff835013ee3475d538c0baf7bc1e1f89adb28cc577d41761cbc2a2db454b4",
+      "token_count": 551
+    },
+    {
+      "snapshot_id": "homepage_deploy_001__impossible__personal__stop__b8__s101__dbf622dd059ddc31::post_recognition",
+      "target_index": 788,
+      "text_sha256": "1a0555c9a00b86ef486b5e011bbd53e688ef403ce923f83dc31fcfdef2e83fff",
+      "token_count": 789
+    },
+    {
+      "snapshot_id": "homepage_deploy_001__impossible__personal__stop__b8__s101__dbf622dd059ddc31::post_peer",
+      "target_index": 884,
+      "text_sha256": "1f485ba043c5f6650b97084093d219b87e561939ae014fc94ca3ba6b8be3341c",
+      "token_count": 885
+    },
+    {
+      "snapshot_id": "homepage_deploy_001__impossible__personal__stop__b8__s101__dbf622dd059ddc31::action_decision",
+      "target_index": 884,
+      "text_sha256": "e7819d0a5a80add10c64c5bc5400819eab2b47e99daa6961810e14a35af10e2e",
+      "token_count": 958
+    },
+    {
+      "snapshot_id": "homepage_deploy_001__impossible__personal__proceed__b8__s101__bfc1939f338083c1::pre_authority",
+      "target_index": 550,
+      "text_sha256": "6a0ff835013ee3475d538c0baf7bc1e1f89adb28cc577d41761cbc2a2db454b4",
+      "token_count": 551
+    },
+    {
+      "snapshot_id": "homepage_deploy_001__impossible__personal__proceed__b8__s101__bfc1939f338083c1::post_recognition",
+      "target_index": 788,
+      "text_sha256": "1a0555c9a00b86ef486b5e011bbd53e688ef403ce923f83dc31fcfdef2e83fff",
+      "token_count": 789
+    },
+    {
+      "snapshot_id": "homepage_deploy_001__impossible__personal__proceed__b8__s101__bfc1939f338083c1::post_peer",
+      "target_index": 889,
+      "text_sha256": "fe8f8369702b246d3bdd294c17a273fb08cc795bef2ff488feb89c7ad0abf059",
+      "token_count": 890
+    },
+    {
+      "snapshot_id": "homepage_deploy_001__impossible__personal__proceed__b8__s101__bfc1939f338083c1::action_decision",
+      "target_index": 889,
+      "text_sha256": "659c03ac0294fd512f321c5d2b6fba2e30b1546458d3698db209a6f4f2130998",
+      "token_count": 1017
+    }
+  ],
+  "schema_version": 1,
+  "score": "mean concept-token logit minus mean-vocabulary logit after final norm",
+  "snapshots": 16,
+  "tokenizer_revision": "ef3d031a90d340a92d71f83ec17d054e100ce713",
+  "torch": "2.8.0+cu128"
+}

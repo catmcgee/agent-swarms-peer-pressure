@@ -2,10 +2,16 @@
 set -euo pipefail
 
 cd /workspace/swarmstop
-python -m venv --system-site-packages .venv-gpu
-. .venv-gpu/bin/activate
+runtime_venv=/root/swarmstop-venv
+python -m venv --system-site-packages "$runtime_venv"
+. "$runtime_venv/bin/activate"
 python -m pip install --upgrade pip
-python -m pip install -e '.[gpu]'
+python -m pip install \
+  'accelerate>=1.10.0' \
+  'huggingface-hub>=0.30.0' \
+  'transformers>=5.5.0' \
+  'PyYAML>=6.0.2'
+python -m pip install -e . --no-deps
 
 export HF_HOME=/workspace/hf
 mkdir -p "$HF_HOME" results/jr-lens-runpod-smoke
