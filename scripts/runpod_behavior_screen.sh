@@ -9,7 +9,7 @@ python -m pip install --upgrade pip
 python -m pip install \
   'accelerate==1.10.1' \
   'fastmcp==2.14.7' \
-  'huggingface-hub==0.34.4' \
+  'huggingface-hub==1.5.0' \
   'transformers==5.5.0' \
   'PyYAML==6.0.3'
 python -m pip install -e . --no-deps
