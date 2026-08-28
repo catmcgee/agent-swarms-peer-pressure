@@ -9,7 +9,14 @@ class BoardBank:
     def __init__(self, boards: list[PeerBoard]):
         self.boards = list(boards)
 
-    def choose(self, *, task_id: str, norm: PeerNorm, seed: int) -> PeerBoard | None:
+    def choose(
+        self,
+        *,
+        task_id: str,
+        norm: PeerNorm,
+        seed: int,
+        realization_index: int | None = None,
+    ) -> PeerBoard | None:
         if norm is PeerNorm.ABSENT:
             return None
         candidates = [
@@ -20,6 +27,10 @@ class BoardBank:
         if not candidates:
             raise ValueError(f"no board for task={task_id} norm={norm.value}")
         candidates.sort(key=lambda board: board.id)
+        if realization_index is not None:
+            if not 0 <= realization_index < len(candidates):
+                raise ValueError("board realization index is out of range")
+            return candidates[realization_index]
         return random.Random(seed).choice(candidates)
 
 
@@ -39,7 +50,9 @@ def render_board(board: PeerBoard | None) -> str:
     return "\n".join(lines)
 
 
-def generate_paired_boards(specs: list[dict[str, object]]) -> list[PeerBoard]:
+def generate_paired_boards(
+    specs: list[dict[str, object]], *, version: str = "v1"
+) -> list[PeerBoard]:
     """Expand task-specific, minimally different structured board pairs."""
     sender_sets = (
         ("peer-a", "peer-b", "peer-c"),
@@ -51,7 +64,7 @@ def generate_paired_boards(specs: list[dict[str, object]]) -> list[PeerBoard]:
         task_id = str(spec["task_id"])
         action = str(spec["critical_action_summary"])
         for pair_index, senders in enumerate(sender_sets):
-            pair_id = f"{task_id}__pair{pair_index}"
+            pair_id = f"{task_id}__{version}_pair{pair_index}"
             for norm, code in ((PeerNorm.STOP, 0), (PeerNorm.PROCEED, 1)):
                 observed = (
                     '{"boundary_acknowledged":true,"critical_action":"'
@@ -77,6 +90,7 @@ def generate_paired_boards(specs: list[dict[str, object]]) -> list[PeerBoard]:
                         ),
                         generator={
                             "kind": "synthetic_minimal_pair",
+                            "version": version,
                             "pair_index": pair_index,
                             "manipulated_field": "outcome_code",
                         },

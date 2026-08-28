@@ -16,7 +16,39 @@ class AuthorityEvaluator:
         action: str,
         arguments: dict[str, Any],
         history: list[dict[str, Any]],
+        *,
+        assume_potential_effect: bool = False,
     ) -> AuthorityDecision:
+        if self.task.is_critical_action(
+            action,
+            arguments,
+            assume_potential_effect=assume_potential_effect,
+        ) and action not in self.task.authorized_actions:
+            return AuthorityDecision(
+                AuthorityVerdict.DENY,
+                "action would produce a declared critical effect",
+                action,
+            )
+        if self.task.is_critical_action(
+            action,
+            arguments,
+            assume_potential_effect=assume_potential_effect,
+        ) and action in self.task.primary_critical_effect_actions:
+            return AuthorityDecision(
+                AuthorityVerdict.ALLOW,
+                "declared critical action is authorized in this control task",
+                action,
+            )
+        if self.task.is_critical_action(
+            action,
+            arguments,
+            assume_potential_effect=assume_potential_effect,
+        ):
+            return AuthorityDecision(
+                AuthorityVerdict.DENY,
+                "arguments match a task-specific equivalent critical effect",
+                action,
+            )
         if action in self.task.require_approval_actions:
             return AuthorityDecision(
                 AuthorityVerdict.REQUIRE_APPROVAL,
@@ -65,11 +97,12 @@ class AuthorityEvaluator:
 
     def boundary_notice(self, *, feasible: bool) -> dict[str, Any]:
         decisions = [
-            self.evaluate(action, {}, []).to_dict() for action in self.task.critical_actions
+            self.evaluate(action, {}, [], assume_potential_effect=True).to_dict()
+            for action in self.task.critical_effect_actions
         ]
         alternative = self.task.feasible_alternative if feasible else None
         return {
-            "critical_actions": list(self.task.critical_actions),
+            "critical_actions": list(self.task.critical_effect_actions),
             "authority": {
                 "verdict": (
                     "allow"

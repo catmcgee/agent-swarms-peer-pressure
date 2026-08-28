@@ -11,7 +11,7 @@ from typing import Any
 
 import yaml
 
-from ..schema import TaskSpec, ToolSpec
+from ..schema import TaskSpec, ToolSpec, critical_rule_matches
 
 DATASET_REVISION = "842228426c2a703347396501af61c7890972c7ee"
 SOURCE_REVISION = "f581249704b26804e28a39e37396f1be00b71a4d"
@@ -120,13 +120,36 @@ def _build_task(
         "available_tools": raw.get("available_tools"),
     }
     _apply_runtime_overrides(runtime, runtime_metadata)
-    tool_specs = tuple(_tool_spec(item) for item in runtime.get_tool_schemas())
+    allowed_tools = raw.get("available_tools")
+    allowed_names = (
+        {
+            str(item["name"] if isinstance(item, dict) else item)
+            for item in allowed_tools
+        }
+        if allowed_tools is not None
+        else None
+    )
+    tool_specs = tuple(
+        _tool_spec(item)
+        for item in runtime.get_tool_schemas()
+        if allowed_names is None or str(item["name"]) in allowed_names
+    )
 
     critical = tuple(str(item) for item in raw.get("critical_actions", []))
     if not critical:
         critical = tuple(str(item) for item in act_raw.get("critical_actions", []))
+    excluded_primary = tuple(
+        str(item)
+        for item in (alternative or {}).get("excluded_primary_critical_actions", [])
+    )
+    primary_effect = tuple(action for action in critical if action not in set(excluded_primary))
+    equivalent_rules = tuple(
+        dict(item) for item in (alternative or {}).get("equivalent_critical_rules", [])
+    )
+    equivalent_names = tuple(str(item["tool"]) for item in equivalent_rules)
+    effective_critical = tuple(dict.fromkeys((*primary_effect, *equivalent_names)))
     tool_names = {tool.name for tool in tool_specs}
-    missing = set(critical) - tool_names
+    missing = set(effective_critical) - tool_names
     if missing:
         raise ValueError(f"critical actions hidden or absent for {category}/{pair_id}: {missing}")
 
@@ -165,9 +188,19 @@ def _build_task(
             "description": str(node.get("description", node["tool"])),
         }
         for node in dag_nodes
-        if str(node.get("tool")) not in set(critical)
+        if not _node_has_critical_effect(
+            str(node.get("tool")),
+            dict(node.get("params") or {}),
+            primary_effect,
+            equivalent_rules,
+        )
         and str(node.get("tool")) in visible_names
     ]
+    preparatory = _truncate_at_runtime_trigger(
+        preparatory,
+        raw.get("abstention_trigger") if task_type == "abstain" else None,
+        explicit_stop_after=(alternative or {}).get("pre_boundary_stop_after"),
+    )
     progress = tuple(item["description"] for item in preparatory)
     source_files = [
         pair_root / "act" / "task.yaml",
@@ -180,7 +213,17 @@ def _build_task(
     }
     authorized = tuple(tool.name for tool in tools)
     if task_type == "abstain":
-        authorized = tuple(name for name in authorized if name not in set(critical))
+        authorized = tuple(
+            name for name in authorized if name not in set(primary_effect)
+        )
+    aliases = (
+        {
+            str(alias): primary_effect[0]
+            for alias in (alternative or {}).get("delegation_aliases", [])
+        }
+        if primary_effect
+        else {}
+    )
 
     return TaskSpec(
         id=task_id,
@@ -212,10 +255,61 @@ def _build_task(
             "tool_overrides": raw.get("tool_overrides") or {},
             "available_tools": raw.get("available_tools"),
             "pre_boundary_calls": preparatory if task_type == "abstain" else [],
+            "excluded_primary_critical_actions": list(excluded_primary),
+            "equivalent_critical_rules": list(equivalent_rules),
+            "delegation_action_aliases": aliases,
             "abstention_trigger": (
                 raw.get("abstention_trigger") if task_type == "abstain" else None
             ),
         },
+    )
+
+
+def _truncate_at_runtime_trigger(
+    preparatory: list[dict[str, Any]],
+    trigger: Any,
+    *,
+    explicit_stop_after: Any = None,
+) -> list[dict[str, Any]]:
+    """Stop deterministic setup once a runtime failure or risk signal is observed."""
+    if explicit_stop_after:
+        trigger_tool = str(explicit_stop_after)
+    elif not isinstance(trigger, dict):
+        return preparatory
+    else:
+        trigger_tool = None
+    trigger_type = str(trigger.get("trigger_type", "")) if isinstance(trigger, dict) else ""
+    if trigger_tool is None and trigger_type == "critical_tool_failure":
+        broken = trigger.get("broken_tool") or {}
+        if isinstance(broken, dict):
+            trigger_tool = str(broken.get("name") or "") or None
+    elif trigger_tool is None and trigger_type == "emergent_risk_discovery":
+        risk = trigger.get("risk_signal") or {}
+        if isinstance(risk, dict):
+            trigger_tool = str(risk.get("where") or "").split(" ", 1)[0] or None
+    if trigger_tool is None:
+        return preparatory
+    for index, item in enumerate(preparatory):
+        if item["tool"] == trigger_tool:
+            return preparatory[: index + 1]
+    if explicit_stop_after:
+        raise ValueError(
+            f"declared pre_boundary_stop_after tool was not reachable: {trigger_tool}"
+        )
+    return preparatory
+
+
+def _node_has_critical_effect(
+    tool: str,
+    arguments: dict[str, Any],
+    primary_effect: tuple[str, ...],
+    equivalent_rules: tuple[dict[str, Any], ...],
+) -> bool:
+    if tool in primary_effect:
+        return True
+    return any(
+        rule.get("tool") == tool and critical_rule_matches(rule, arguments)
+        for rule in equivalent_rules
     )
 
 

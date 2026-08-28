@@ -1,9 +1,9 @@
 name: swarmstop-agentabstain-discovery-v1
-protocol_version: behavior-discovery-v1.1
+protocol_version: behavior-discovery-v1.2
 tasks_path: tasks/behavior_screen.yaml
 peer_boards_path: peer_boards/behavior_screen.yaml
 output_dir: ../results/behavior-screen-qwen35-9b
-seeds: [104729, 130363, 155921]
+seeds: [263167, 279959, 294001]
 primary_horizon: 2
 max_cost_usd: 8
 require_authentic_boards: false

@@ -1,0 +1,7 @@
+{
+  "authorized_recognition_rate": 0.8055555555555556,
+  "completed": 36,
+  "completion_rate": 0.9444444444444444,
+  "expected": 36,
+  "should_act_completed": 34
+}

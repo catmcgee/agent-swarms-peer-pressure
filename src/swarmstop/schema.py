@@ -111,6 +111,40 @@ class ToolSpec:
         }
 
 
+def critical_rule_matches(rule: dict[str, Any], arguments: dict[str, Any]) -> bool:
+    if "all" in rule:
+        clauses = rule.get("all") or []
+        return bool(clauses) and all(
+            critical_rule_matches(dict(item), arguments) for item in clauses
+        )
+    if "any" in rule:
+        clauses = rule.get("any") or []
+        return any(critical_rule_matches(dict(item), arguments) for item in clauses)
+    field_name = str(rule.get("field", ""))
+    if not field_name:
+        return True
+    value = arguments.get(field_name)
+    if "equals" in rule:
+        return str(value).strip().lower() == str(rule["equals"]).strip().lower()
+    if "contains" in rule:
+        return str(rule["contains"]).lower() in str(value).lower()
+    if "one_of" in rule:
+        return str(value).strip().lower() in {
+            str(item).strip().lower() for item in (rule.get("one_of") or [])
+        }
+    return False
+
+
+def critical_rule_fields(rule: dict[str, Any]) -> set[str]:
+    fields: set[str] = set()
+    for key in ("all", "any"):
+        for item in rule.get(key) or []:
+            fields.update(critical_rule_fields(dict(item)))
+    if rule.get("field"):
+        fields.add(str(rule["field"]))
+    return fields
+
+
 @dataclass(frozen=True)
 class TaskSpec:
     id: str
@@ -136,14 +170,99 @@ class TaskSpec:
         if self.task_type not in {"act", "abstain"}:
             raise ValueError("task_type must be act or abstain")
         tool_names = {tool.name for tool in self.tools}
+        tool_map = {tool.name: tool for tool in self.tools}
         missing_critical = set(self.critical_actions) - tool_names
         if missing_critical:
             raise ValueError(f"critical actions missing tool specs: {sorted(missing_critical)}")
+        missing_equivalent = {
+            str(rule.get("tool", "")) for rule in self.equivalent_critical_rules
+        } - tool_names
+        if missing_equivalent:
+            raise ValueError(
+                "equivalent critical actions missing tool specs: "
+                f"{sorted(missing_equivalent)}"
+            )
+        for rule in self.equivalent_critical_rules:
+            action = str(rule.get("tool", ""))
+            properties = set(
+                (tool_map[action].input_schema.get("properties") or {}).keys()
+            )
+            unknown_fields = critical_rule_fields(rule) - properties
+            if unknown_fields:
+                raise ValueError(
+                    f"equivalent critical rule for {action} names unknown fields: "
+                    f"{sorted(unknown_fields)}"
+                )
+        excluded = set(self.excluded_primary_critical_actions)
+        if not excluded.issubset(self.critical_actions):
+            raise ValueError("excluded primary actions must be declared critical actions")
+        invalid_alias_targets = set(self.delegation_action_aliases.values()) - set(
+            self.critical_effect_actions
+        )
+        if invalid_alias_targets:
+            raise ValueError(
+                f"delegation aliases target noncritical actions: {invalid_alias_targets}"
+            )
         missing_authorized = set(self.authorized_actions) - tool_names
         if missing_authorized:
             raise ValueError(f"authorized actions missing tool specs: {sorted(missing_authorized)}")
         if self.feasible_alternative and self.feasible_alternative not in tool_names:
             raise ValueError("feasible_alternative must name a task tool")
+
+    @property
+    def excluded_primary_critical_actions(self) -> tuple[str, ...]:
+        return tuple(
+            str(item)
+            for item in self.metadata.get("excluded_primary_critical_actions", [])
+        )
+
+    @property
+    def primary_critical_effect_actions(self) -> tuple[str, ...]:
+        excluded = set(self.excluded_primary_critical_actions)
+        return tuple(action for action in self.critical_actions if action not in excluded)
+
+    @property
+    def equivalent_critical_rules(self) -> tuple[dict[str, Any], ...]:
+        return tuple(
+            dict(item) for item in self.metadata.get("equivalent_critical_rules", [])
+        )
+
+    @property
+    def delegation_action_aliases(self) -> dict[str, str]:
+        return {
+            str(alias).strip().lower(): str(action)
+            for alias, action in (
+                self.metadata.get("delegation_action_aliases", {}) or {}
+            ).items()
+        }
+
+    @property
+    def critical_effect_actions(self) -> tuple[str, ...]:
+        """Primary and task-specific substitute actions with the same forbidden effect."""
+        equivalents = tuple(str(rule["tool"]) for rule in self.equivalent_critical_rules)
+        return tuple(dict.fromkeys((*self.primary_critical_effect_actions, *equivalents)))
+
+    def is_critical_action(
+        self,
+        action: str,
+        arguments: dict[str, Any] | None = None,
+        *,
+        assume_potential_effect: bool = False,
+    ) -> bool:
+        if action in self.primary_critical_effect_actions:
+            return True
+        matching_rules = [
+            rule for rule in self.equivalent_critical_rules if rule.get("tool") == action
+        ]
+        if assume_potential_effect and matching_rules:
+            return True
+        values = arguments or {}
+        return any(critical_rule_matches(rule, values) for rule in matching_rules)
+
+    def canonical_delegated_action(self, action: str) -> str | None:
+        if action in self.critical_effect_actions:
+            return action
+        return self.delegation_action_aliases.get(action.strip().lower())
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> TaskSpec:

@@ -91,10 +91,14 @@ def load_peer_boards(path: str | Path | None) -> list[PeerBoard]:
     if isinstance(raw, dict) and "paired_screen" in raw:
         from .boards import generate_paired_boards
 
-        values = (raw.get("paired_screen") or {}).get("tasks") or []
+        paired_screen = raw.get("paired_screen") or {}
+        values = paired_screen.get("tasks") or []
         if not isinstance(values, list):
             raise ValueError("paired_screen.tasks must be a list")
-        boards = generate_paired_boards(values)
+        boards = generate_paired_boards(
+            values,
+            version=str(paired_screen.get("version", "v1")),
+        )
         ids = [board.id for board in boards]
         if len(ids) != len(set(ids)):
             raise ValueError("peer-board IDs must be unique")

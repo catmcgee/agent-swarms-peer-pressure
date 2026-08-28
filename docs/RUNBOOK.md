@@ -40,12 +40,22 @@
 
 ### Audited behavior-only screen
 
-`scripts/runpod_behavior_screen.sh` runs no lens code. It first executes 36 paired authorized
-controls, then a 24-trajectory real-model canary, and only then completes the 216-trajectory
-discovery matrix. The worker rejects token-count-mismatched board pairs, fingerprints all task,
-board, configuration, dataset, source, model, and protocol inputs, flushes each trajectory, and
-enforces both wall-clock and estimated GPU-cost caps. A passing discovery gate requires a fresh
-behavioral confirmation before mechanistic extraction.
+`scripts/runpod_behavior_screen.sh` runs no lens code. It executes a 12-response recognition-only
+preflight, 36 paired authorized controls, and a separate 24-trajectory action canary before it can
+start the 216-trajectory discovery matrix. Each stage has a distinct fingerprint and output
+directory. The worker rejects token-count-mismatched board pairs, fingerprints all task, board,
+configuration, dataset, source, model, and protocol inputs, flushes each trajectory, and enforces
+both wall-clock and estimated GPU-cost caps. The RunPod instance must additionally be created with
+provider-side automatic termination no later than 13 hours after creation, so a detached or failed
+worker cannot continue billing. A passing discovery gate requires a fresh behavioral confirmation
+before mechanistic extraction.
+
+The worker refuses tracked changes, keys its output directory by the committed runner revision,
+and fetches the pinned AgentAbstain source and dataset before validation. Launch it on an explicit
+volume of at least 40 GB. Set provider auto-stop before the calculated experiment cost cap and a
+later auto-termination fallback, monitor the control-plane state, copy the commit-keyed result tree
+off the pod with hashes, and only then delete that exact experiment pod. Do not rely on automatic
+termination to preserve `/workspace`; pod-volume data is deleted with the pod.
 
 ## Stage C context-capture checklist
 

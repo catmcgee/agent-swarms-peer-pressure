@@ -98,6 +98,7 @@ def experiment_fingerprint(
 ) -> str:
     payload = {
         "protocol_version": config.protocol_version,
+        "runner_revision": _git_revision(),
         "config": _serialize_config(config),
         "model_revision": model_revision,
         "tasks": [asdict(task) for task in tasks],

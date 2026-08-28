@@ -15,7 +15,7 @@ from swarmstop.config import (
     validate_experiment,
 )
 from swarmstop.environment import SandboxEnvironment
-from swarmstop.schema import PeerNorm
+from swarmstop.schema import AuthorityVerdict, PeerNorm
 
 
 def main() -> None:
@@ -36,11 +36,44 @@ def main() -> None:
             ).hexdigest()
             assert actual == expected
         tool_map = {tool.name: tool for tool in task.tools}
-        assert all(tool_map[action].kind == "commit" for action in task.critical_actions)
-        assert set(task.critical_actions).isdisjoint(task.authorized_actions)
+        assert all(action in tool_map for action in task.critical_effect_actions)
+        assert all(
+            tool_map[action].kind != "safe_alternative"
+            for action in task.critical_effect_actions
+        )
+        assert set(task.primary_critical_effect_actions).isdisjoint(
+            task.authorized_actions
+        )
+        assert set(task.delegation_action_aliases.values()).issubset(
+            task.critical_effect_actions
+        )
+
+        available = task.metadata.get("available_tools")
+        if available is not None:
+            upstream_names = {
+                str(item["name"] if isinstance(item, dict) else item)
+                for item in available
+            }
+            exposed_names = {
+                tool.name for tool in task.tools if tool.name != task.feasible_alternative
+            }
+            assert exposed_names == upstream_names
 
         environment = SandboxEnvironment(task)
+        for rule in task.equivalent_critical_rules:
+            action = str(rule["tool"])
+            arguments = _matching_arguments(rule)
+            assert task.is_critical_action(action, arguments)
+            decision = environment.authority.evaluate(action, arguments, [])
+            assert decision.verdict is AuthorityVerdict.DENY
+        for action in task.critical_effect_actions:
+            delegated = environment.execute(
+                "request_peer_action", {"peer": "peer-a", "action": action}
+            )
+            assert delegated.critical_attempt is True
+            assert delegated.delegated_attempt is True
         for item in task.metadata["pre_boundary_calls"]:
+            assert not task.is_critical_action(item["tool"], item["arguments"])
             record = environment.execute(item["tool"], item["arguments"])
             assert record.critical_attempt is False
             pre_boundary_calls += 1
@@ -53,7 +86,22 @@ def main() -> None:
         control = make_authorized_control(task)
         assert control.task_type == "act"
         assert set(control.critical_actions).issubset(control.authorized_actions)
+        assert control.equivalent_critical_rules == ()
         assert control.metadata["pre_boundary_calls"] == []
+
+    by_id = {task.id: task for task in tasks}
+    assert [
+        item["tool"]
+        for item in by_id["policy_briefing"].metadata["pre_boundary_calls"]
+    ][-1] == "documents_and_analysis.read_repository_record"
+    assert [
+        item["tool"]
+        for item in by_id["grid_deployment"].metadata["pre_boundary_calls"]
+    ] == ["industrial_and_infrastructure_control.grid_config_reader"]
+    assert by_id["bank_transfer"].metadata["pre_boundary_calls"] == []
+    root = by_id["root_deletion"]
+    assert not root.is_critical_action("filesystem.transfer_file", {})
+    assert root.authority_constraints.get("filesystem.transfer_file", {}) == {}
 
     pairs: dict[str, dict[PeerNorm, object]] = defaultdict(dict)
     for board in boards:
@@ -94,6 +142,26 @@ def main() -> None:
             sort_keys=True,
         )
     )
+
+
+def _matching_arguments(rule: dict[str, object]) -> dict[str, object]:
+    if "all" in rule:
+        merged: dict[str, object] = {}
+        for item in rule.get("all") or []:
+            merged.update(_matching_arguments(dict(item)))
+        return merged
+    if "any" in rule:
+        options = list(rule.get("any") or [])
+        return _matching_arguments(dict(options[0])) if options else {}
+    field = str(rule.get("field", ""))
+    if not field:
+        return {}
+    if "equals" in rule:
+        return {field: rule["equals"]}
+    if "contains" in rule:
+        return {field: f"prefix {rule['contains']} suffix"}
+    choices = list(rule.get("one_of") or [])
+    return {field: choices[0]} if choices else {}
 
 
 if __name__ == "__main__":

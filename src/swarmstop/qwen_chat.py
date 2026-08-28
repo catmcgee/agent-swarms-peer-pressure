@@ -11,6 +11,7 @@ from .schema import ToolCall
 _TOOL_CALL_RE = re.compile(r"<tool_call>\s*(.*?)\s*</tool_call>", re.DOTALL)
 _FUNCTION_RE = re.compile(r"<function=([^>\n]+)>\s*(.*?)\s*</function>", re.DOTALL)
 _PARAMETER_RE = re.compile(r"<parameter=([^>\n]+)>\s*(.*?)\s*</parameter>", re.DOTALL)
+_RAW_FUNCTION_NAME_RE = re.compile(r"<function=\s*([^>\n]+?)\s*>")
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 
@@ -93,6 +94,41 @@ def parse_qwen_response(
     return visible.strip(), tuple(calls)
 
 
+def has_malformed_tool_markup(text: str, calls: tuple[ToolCall, ...]) -> bool:
+    """Detect unmatched or unparsable XML tool fragments, including mixed responses."""
+    complete_blocks = list(_TOOL_CALL_RE.finditer(text))
+    if len(complete_blocks) != len(calls):
+        return True
+    for block in complete_blocks:
+        function_match = _FUNCTION_RE.fullmatch(block.group(1).strip())
+        if function_match is None:
+            return True
+        body = function_match.group(2)
+        if any(marker in body for marker in ("<function=", "</function>")):
+            return True
+        parameters = list(_PARAMETER_RE.finditer(body))
+        names = [match.group(1).strip() for match in parameters]
+        if len(names) != len(set(names)):
+            return True
+        if _PARAMETER_RE.sub("", body).strip():
+            return True
+    residual = _TOOL_CALL_RE.sub("", text)
+    markers = (
+        "<tool_call",
+        "</tool_call>",
+        "<function=",
+        "</function>",
+        "<parameter=",
+        "</parameter>",
+    )
+    return any(marker in residual for marker in markers)
+
+
+def raw_function_names(text: str) -> tuple[str, ...]:
+    """Extract normalized function names even from truncated tool markup."""
+    return tuple(match.group(1).strip() for match in _RAW_FUNCTION_NAME_RE.finditer(text))
+
+
 def coerce_tool_arguments(
     calls: tuple[ToolCall, ...], tools: list[dict[str, Any]]
 ) -> tuple[tuple[ToolCall, ...], bool]:
@@ -115,6 +151,35 @@ def coerce_tool_arguments(
             arguments[name] = coerced
         normalized.append(ToolCall(call.id, call.name, arguments))
     return tuple(normalized), changed
+
+
+def tool_calls_match_schemas(
+    calls: tuple[ToolCall, ...], tools: list[dict[str, Any]]
+) -> bool:
+    """Validate structural fields/types/enums; environment policy handles string patterns."""
+    schemas = {
+        str(item["function"]["name"]): dict(
+            item["function"].get("parameters") or {}
+        )
+        for item in tools
+    }
+    for call in calls:
+        schema = schemas.get(call.name)
+        if schema is None:
+            return False
+        required = {str(item) for item in schema.get("required") or []}
+        if not required.issubset(call.arguments):
+            return False
+        properties = dict(schema.get("properties") or {})
+        if schema.get("additionalProperties") is False and (
+            set(call.arguments) - set(properties)
+        ):
+            return False
+        for name, value in call.arguments.items():
+            rule = dict(properties.get(name) or {})
+            if not _value_matches_schema(value, rule):
+                return False
+    return True
 
 
 def _coerce_value(value: Any, expected: str) -> Any:
@@ -148,3 +213,20 @@ def _coerce_value(value: Any, expected: str) -> Any:
         if expected == "object" and isinstance(parsed, dict):
             return parsed
     return value
+
+
+def _value_matches_schema(value: Any, rule: dict[str, Any]) -> bool:
+    expected = str(rule.get("type", ""))
+    type_matches = {
+        "string": isinstance(value, str),
+        "integer": isinstance(value, int) and not isinstance(value, bool),
+        "number": isinstance(value, (int, float)) and not isinstance(value, bool),
+        "boolean": isinstance(value, bool),
+        "array": isinstance(value, list),
+        "object": isinstance(value, dict),
+    }
+    if expected and not type_matches.get(expected, True):
+        return False
+    if "enum" in rule and value not in (rule.get("enum") or []):
+        return False
+    return True
