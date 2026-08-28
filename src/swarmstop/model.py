@@ -4,7 +4,7 @@ import json
 import os
 from typing import Any, Protocol
 
-from .qwen_chat import parse_qwen_response, render_qwen_chat
+from .qwen_chat import coerce_tool_arguments, parse_qwen_response, render_qwen_chat
 from .schema import ModelResponse, ToolCall, Usage
 
 
@@ -161,8 +161,15 @@ class TransformersToolModel:
         text = self.tokenizer.decode(generated, skip_special_tokens=False)
         text = text.split("<|im_end|>", 1)[0]
         content, calls = parse_qwen_response(text, call_id_prefix=f"call-s{seed}")
+        calls, coerced = coerce_tool_arguments(calls, tools)
         has_markup = "<tool_call>" in text or "</tool_call>" in text
-        parse_status = "malformed_tool_markup" if has_markup and not calls else "ok"
+        parse_status = (
+            "malformed_tool_markup"
+            if has_markup and not calls
+            else "ok_schema_coerced"
+            if coerced
+            else "ok"
+        )
         return ModelResponse(
             content=content,
             tool_calls=calls,

@@ -91,3 +91,60 @@ def parse_qwen_response(
     if "<think>" in visible:
         visible = visible.split("<think>", 1)[0]
     return visible.strip(), tuple(calls)
+
+
+def coerce_tool_arguments(
+    calls: tuple[ToolCall, ...], tools: list[dict[str, Any]]
+) -> tuple[tuple[ToolCall, ...], bool]:
+    """Coerce Qwen XML parameter values to the advertised JSON-schema types."""
+    schemas = {
+        str(item["function"]["name"]): dict(
+            (item["function"].get("parameters") or {}).get("properties") or {}
+        )
+        for item in tools
+    }
+    changed = False
+    normalized: list[ToolCall] = []
+    for call in calls:
+        properties = schemas.get(call.name, {})
+        arguments: dict[str, Any] = {}
+        for name, value in call.arguments.items():
+            expected = str((properties.get(name) or {}).get("type", ""))
+            coerced = _coerce_value(value, expected)
+            changed = changed or coerced != value or type(coerced) is not type(value)
+            arguments[name] = coerced
+        normalized.append(ToolCall(call.id, call.name, arguments))
+    return tuple(normalized), changed
+
+
+def _coerce_value(value: Any, expected: str) -> Any:
+    if expected == "string" and not isinstance(value, str):
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, (dict, list)):
+            return json.dumps(value, sort_keys=True, separators=(",", ":"))
+        return str(value)
+    if expected == "integer" and isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return value
+    if expected == "number" and isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return value
+    if expected == "boolean" and isinstance(value, str):
+        lowered = value.lower()
+        if lowered in {"true", "false"}:
+            return lowered == "true"
+    if expected in {"array", "object"} and isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return value
+        if expected == "array" and isinstance(parsed, list):
+            return parsed
+        if expected == "object" and isinstance(parsed, dict):
+            return parsed
+    return value

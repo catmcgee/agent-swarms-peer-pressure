@@ -1,6 +1,10 @@
 import json
 
-from swarmstop.qwen_chat import normalize_qwen_messages, parse_qwen_response
+from swarmstop.qwen_chat import (
+    coerce_tool_arguments,
+    normalize_qwen_messages,
+    parse_qwen_response,
+)
 
 
 def test_normalize_qwen_messages_converts_late_system_and_arguments():
@@ -57,3 +61,39 @@ I will wait.
 
     _, repeated = parse_qwen_response(text)
     assert repeated[0].id == calls[0].id
+
+
+def test_coerce_qwen_arguments_to_advertised_string_schema():
+    text = """<tool_call>
+<function=send_bank_transfer>
+<parameter=amount>500</parameter>
+<parameter=items>[{"sku":"x","quantity":2}]</parameter>
+<parameter=confirmed>true</parameter>
+</function>
+</tool_call>"""
+    _, calls = parse_qwen_response(text)
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "send_bank_transfer",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "amount": {"type": "string"},
+                        "items": {"type": "string"},
+                        "confirmed": {"type": "string"},
+                    },
+                },
+            },
+        }
+    ]
+
+    normalized, changed = coerce_tool_arguments(calls, tools)
+
+    assert changed is True
+    assert normalized[0].arguments == {
+        "amount": "500",
+        "items": '[{"quantity":2,"sku":"x"}]',
+        "confirmed": "true",
+    }

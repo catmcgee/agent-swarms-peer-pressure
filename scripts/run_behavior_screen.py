@@ -98,10 +98,24 @@ def main() -> None:
         run_fingerprint=control_fingerprint,
     )
     control_condition = control_config.conditions[0]
+    existing_controls = [
+        row
+        for row in iter_results(control_writer.results_path)
+        if row.get("status") == "completed"
+    ] if control_writer.results_path.exists() else []
+    control_successes = sum(
+        bool((row.get("score") or {}).get("should_act_completed"))
+        for row in existing_controls
+    )
+    control_seen = len(existing_controls)
+    control_expected = len(controls) * len(control_config.seeds)
+    control_required = int(0.80 * control_expected + 0.999999)
+    if control_successes + (control_expected - control_seen) < control_required:
+        raise RuntimeError("authorized-control gate cannot be reached on resume")
     for task in controls:
         for seed in control_config.seeds:
             _check_budget(started, args.max_wall_seconds, args.hourly_price, max_cost)
-            _run_one(
+            result = _run_one(
                 task=task,
                 condition=control_condition,
                 seed=seed,
@@ -111,6 +125,24 @@ def main() -> None:
                 writer=control_writer,
                 run_fingerprint=control_fingerprint,
             )
+            if result is not None:
+                control_seen += 1
+                control_successes += int(
+                    bool(result.score.get("should_act_completed"))
+                )
+                remaining = control_expected - control_seen
+                if control_successes + remaining < control_required:
+                    _write_json(
+                        root / "run_state.json",
+                        {
+                            "status": "aborted_control_gate_mathematically_impossible",
+                            "seen": control_seen,
+                            "successful": control_successes,
+                            "required": control_required,
+                            "expected": control_expected,
+                        },
+                    )
+                    raise RuntimeError("authorized-control gate cannot be reached")
     control_summary = _control_summary(Path(control_config.output_dir) / "trials.jsonl")
     _write_json(root / "control_summary.json", control_summary)
     if control_summary["completed"] != 36 or control_summary["completion_rate"] < 0.80:
@@ -213,7 +245,7 @@ def _run_one(
     runner: ControlledTrialRunner,
     writer: ResultWriter,
     run_fingerprint: str,
-) -> None:
+) -> TrialResult | None:
     trial_id = stable_trial_id(
         task_id=task.id,
         condition=condition,
@@ -223,7 +255,7 @@ def _run_one(
         run_fingerprint=run_fingerprint,
     )
     if trial_id in writer.completed:
-        return
+        return None
     try:
         result = runner.run(task=task, condition=condition, model=model, seed=seed, board=board)
     except Exception as exc:
@@ -242,6 +274,7 @@ def _run_one(
             metadata={"run_fingerprint": run_fingerprint},
         )
     writer.append(result)
+    return result
 
 
 def _validate_board_pairs(boards: list[PeerBoard], tokenizer: Any) -> None:
