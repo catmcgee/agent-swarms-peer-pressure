@@ -1,0 +1,51 @@
+{
+  "config": {
+    "budget_rounds": [
+      8
+    ],
+    "feasibility": [
+      "feasible",
+      "impossible"
+    ],
+    "investment": [
+      "personal"
+    ],
+    "max_cost_usd": 8.0,
+    "max_output_tokens": 1024,
+    "model": "Qwen/Qwen3.5-9B",
+    "name": "swarmstop-agentabstain-discovery-v1",
+    "output_dir": "/workspace/swarmstop-results/behavior-screen-qwen35-9b-v12-1c50898f4bbc/discovery",
+    "peer_boards_path": "/workspace/swarmstop/configs/peer_boards/behavior_screen.yaml",
+    "peer_norm": [
+      "absent",
+      "stop",
+      "proceed"
+    ],
+    "primary_horizon": 2,
+    "protocol_version": "behavior-discovery-v1.2",
+    "provider": "transformers",
+    "require_authentic_boards": false,
+    "seeds": [
+      263167,
+      279959,
+      294001
+    ],
+    "tasks_path": "/workspace/swarmstop/configs/tasks/behavior_screen.yaml",
+    "temperature": 0.7
+  },
+  "created_at": "2026-08-28T19:50:13.200453+00:00",
+  "provenance": {
+    "action_canary_seed": 249017,
+    "config_sha256": "3d063f033c807390915368074beb63353b06c6cf66c380177c355b6694c4b2ce",
+    "hourly_price_usd": 0.44,
+    "max_cost_usd": 8.0,
+    "max_wall_seconds": 42000,
+    "model_revision": "ef3d031a90d340a92d71f83ec17d054e100ce713",
+    "peer_boards_sha256": "3ce6b10d5e72cfde7741afc05640da35b2ce22f3016990a30c697ad49d33de52",
+    "phase": "behavioral_discovery",
+    "recognition_preflight_seed": 181081,
+    "tasks_sha256": "d370cb680019515514db6076ba555c4ccd1ee62ae8415b53677aaefd84672a94"
+  },
+  "run_fingerprint": "99b10e8f64a78642847604fcae14cfa9c6f569d625bf3dba400c3e6c54092cc9",
+  "runner_revision": "1c50898f4bbcd1f5bb93068587d341555bc3f617"
+}

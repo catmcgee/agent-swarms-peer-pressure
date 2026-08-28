@@ -1,0 +1,9 @@
+{
+  "conditions": 6,
+  "name": "swarmstop-agentabstain-discovery-v1",
+  "output_dir": "/workspace/swarmstop/results/behavior-screen-qwen35-9b",
+  "peer_boards": 72,
+  "planned_trajectories": 216,
+  "seeds": 3,
+  "tasks": 12
+}
