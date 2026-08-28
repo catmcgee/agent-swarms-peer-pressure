@@ -1,0 +1,12 @@
+{
+  "authorized_controls": 36,
+  "board_pairs": 36,
+  "boards": 72,
+  "categories": 6,
+  "discovery_trajectories": 216,
+  "domains": 13,
+  "expected_broken_tool_observations": 2,
+  "pre_boundary_runtime_calls": 27,
+  "status": "passed",
+  "tasks": 12
+}
