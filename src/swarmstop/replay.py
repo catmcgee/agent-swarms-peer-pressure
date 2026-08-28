@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .mechanistic import Anchor, AnchorSnapshot, TargetMode
+from .qwen_chat import render_qwen_chat
 
 
 @dataclass(frozen=True)
@@ -27,13 +28,23 @@ def render_snapshot(
     enable_thinking: bool = False,
 ) -> RenderedSnapshot:
     add_generation_prompt = snapshot.target_mode is TargetMode.LAST_PROMPT_TOKEN
-    text = tokenizer.apply_chat_template(
-        list(snapshot.messages),
-        tools=list(snapshot.tools) or None,
-        tokenize=False,
-        add_generation_prompt=add_generation_prompt,
-        enable_thinking=enable_thinking,
-    )
+    if snapshot.model_id.startswith("Qwen/Qwen3.5"):
+        if enable_thinking:
+            raise ValueError("Qwen snapshot replay must keep hidden thinking disabled")
+        text = render_qwen_chat(
+            tokenizer,
+            list(snapshot.messages),
+            list(snapshot.tools),
+            add_generation_prompt=add_generation_prompt,
+        )
+    else:
+        text = tokenizer.apply_chat_template(
+            list(snapshot.messages),
+            tools=list(snapshot.tools) or None,
+            tokenize=False,
+            add_generation_prompt=add_generation_prompt,
+            enable_thinking=enable_thinking,
+        )
     encoded = tokenizer(
         text,
         add_special_tokens=False,

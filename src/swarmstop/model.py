@@ -5,6 +5,7 @@ import os
 import uuid
 from typing import Any, Protocol
 
+from .qwen_chat import parse_qwen_response, render_qwen_chat
 from .schema import ModelResponse, ToolCall, Usage
 
 
@@ -85,6 +86,85 @@ class OpenAICompatibleModel:
             tool_calls=tuple(calls),
             usage=Usage(input_tokens, output_tokens, cached),
             finish_reason=str(choice.finish_reason) if choice.finish_reason else None,
+        )
+
+
+class TransformersToolModel:
+    """Pinned local Hugging Face inference for text-only Qwen tool trajectories."""
+
+    def __init__(
+        self,
+        model_id: str,
+        *,
+        revision: str,
+        tokenizer_revision: str | None = None,
+        device: str = "cuda",
+    ):
+        import torch
+        from transformers import AutoModelForMultimodalLM, AutoProcessor
+
+        if not revision:
+            raise ValueError("a pinned model revision is required")
+        self.model_id = model_id
+        self.revision = revision
+        self.tokenizer_revision = tokenizer_revision or revision
+        self.processor = AutoProcessor.from_pretrained(
+            model_id,
+            revision=self.tokenizer_revision,
+        )
+        self.tokenizer = getattr(self.processor, "tokenizer", self.processor)
+        self.model = AutoModelForMultimodalLM.from_pretrained(
+            model_id,
+            revision=revision,
+            dtype=torch.bfloat16,
+            device_map={"": device},
+            low_cpu_mem_usage=True,
+        )
+        self.model.eval()
+        self.device = self.model.get_input_embeddings().weight.device
+
+    def complete(
+        self,
+        *,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        seed: int,
+        temperature: float,
+        max_output_tokens: int,
+    ) -> ModelResponse:
+        import torch
+
+        prompt = render_qwen_chat(
+            self.tokenizer,
+            messages,
+            tools,
+            add_generation_prompt=True,
+        )
+        encoded = self.tokenizer(prompt, add_special_tokens=False, return_tensors="pt")
+        encoded = {name: value.to(self.device) for name, value in encoded.items()}
+        do_sample = temperature > 0
+        generation: dict[str, Any] = {
+            **encoded,
+            "max_new_tokens": max_output_tokens,
+            "do_sample": do_sample,
+            "pad_token_id": self.tokenizer.eos_token_id,
+        }
+        if do_sample:
+            generation["temperature"] = temperature
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+        with torch.inference_mode():
+            output = self.model.generate(**generation)
+        prompt_tokens = int(encoded["input_ids"].shape[-1])
+        generated = output[0, prompt_tokens:]
+        text = self.tokenizer.decode(generated, skip_special_tokens=False)
+        text = text.split("<|im_end|>", 1)[0]
+        content, calls = parse_qwen_response(text)
+        return ModelResponse(
+            content=content,
+            tool_calls=calls,
+            usage=Usage(prompt_tokens, int(generated.numel()), 0),
+            finish_reason="tool_calls" if calls else "stop",
         )
 
 

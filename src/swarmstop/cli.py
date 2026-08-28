@@ -28,7 +28,7 @@ from .mechanistic import (
     load_mechanistic_config,
     peer_delta_contrasts,
 )
-from .model import OpenAICompatibleModel, ScriptedSocialModel
+from .model import OpenAICompatibleModel, ScriptedSocialModel, TransformersToolModel
 from .replay import validate_complete_snapshot_trials
 from .runner import ControlledTrialRunner
 from .schema import TrialResult, stable_trial_id
@@ -43,7 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     run = subparsers.add_parser("run", help="run or resume a controlled experiment")
     run.add_argument("--config", required=True)
-    run.add_argument("--provider", choices=("scripted", "openai-compatible"))
+    run.add_argument("--provider", choices=("scripted", "openai-compatible", "transformers"))
     run.add_argument("--model")
     run.add_argument("--limit", type=int)
     run.add_argument("--anchor-snapshots")
@@ -146,6 +146,11 @@ def _run(args: argparse.Namespace) -> None:
         model = ScriptedSocialModel()
         if args.model and args.model != model.model_id:
             raise ValueError("the scripted provider only supports model scripted-social")
+    elif config.provider == "transformers":
+        model_id = args.model or config.model or os.environ.get("MODEL_ID")
+        if not model_id or not args.model_revision:
+            raise ValueError("transformers inference requires model ID and --model-revision")
+        model = TransformersToolModel(model_id, revision=args.model_revision)
     else:
         model_id = args.model or config.model or os.environ.get("MODEL_ID")
         if not model_id:

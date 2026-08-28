@@ -47,3 +47,17 @@
 5. Freeze the snapshot JSONL beside the behavioral trace before inspecting lens results.
 6. Replay snapshots in length-batched offline forwards; do not request or retain hidden reasoning text.
 7. Store only selected-position residuals and the provenance required to reproduce them.
+
+### RunPod smoke command
+
+The bounded GPU smoke crosses the two local sandbox tasks with stop versus proceed peers,
+one seed, impossible feasibility, personal investment, and the eight-round cap. It produces
+four behavioral trajectories, sixteen anchor snapshots, selected residuals, and 496 J/R/logit
+readout records. On a fresh official PyTorch pod:
+
+```bash
+bash scripts/runpod_jr_smoke.sh
+```
+
+Use a 48 GB GPU, at least 35 GB of persistent workspace storage, and an automatic termination
+deadline. Copy `results/jr-lens-runpod-smoke` off the pod before deletion.
