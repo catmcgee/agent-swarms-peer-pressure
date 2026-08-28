@@ -9,6 +9,7 @@ from swarmstop.mechanistic import (
     LensAnchorRecord,
     SnapshotWriter,
     TargetMode,
+    load_anchor_snapshots,
     load_concept_registry,
     load_mechanistic_config,
     peer_delta_contrasts,
@@ -145,3 +146,6 @@ def test_snapshot_writer_is_resumable_and_rejects_changed_context(tmp_path: Path
     )
     with pytest.raises(ValueError, match="snapshot changed"):
         resumed.capture(changed)
+
+    loaded = load_anchor_snapshots(path)
+    assert loaded == [snapshot]

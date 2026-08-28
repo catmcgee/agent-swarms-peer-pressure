@@ -58,6 +58,9 @@ swarmstop run \
   --config configs/pilot.yaml \
   --model-revision YOUR_VERIFIED_MODEL_REVISION \
   --anchor-snapshots results/pilot-template/anchor-snapshots.jsonl
+
+swarmstop snapshot-validate \
+  --snapshots results/pilot-template/anchor-snapshots.jsonl
 ```
 
 The revision flag records provenance; it does not prove that a hosted endpoint serves those weights. Use it for Stage C only when the inference service is pinned independently.

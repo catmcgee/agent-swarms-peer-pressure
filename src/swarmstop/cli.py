@@ -22,12 +22,14 @@ from .mechanistic import (
     Anchor,
     SnapshotConflictError,
     SnapshotWriter,
+    load_anchor_snapshots,
     load_concept_registry,
     load_lens_records,
     load_mechanistic_config,
     peer_delta_contrasts,
 )
 from .model import OpenAICompatibleModel, ScriptedSocialModel
+from .replay import validate_complete_snapshot_trials
 from .runner import ControlledTrialRunner
 from .schema import TrialResult, stable_trial_id
 
@@ -75,6 +77,11 @@ def build_parser() -> argparse.ArgumentParser:
         "lens-provenance", help="verify remote J/R-lens artifacts without downloading tensors"
     )
     lens_provenance.add_argument("--config", required=True)
+
+    snapshot_validate = subparsers.add_parser(
+        "snapshot-validate", help="validate captured anchor completeness and provenance"
+    )
+    snapshot_validate.add_argument("--snapshots", required=True)
     return parser
 
 
@@ -94,6 +101,8 @@ def main(argv: list[str] | None = None) -> None:
         _lens_compare(args)
     elif args.command == "lens-provenance":
         _lens_provenance(args.config)
+    elif args.command == "snapshot-validate":
+        _snapshot_validate(args.snapshots)
 
 
 def _load(config_path: str):
@@ -306,6 +315,16 @@ def _lens_compare(args: argparse.Namespace) -> None:
 def _lens_provenance(config_path: str) -> None:
     config = load_mechanistic_config(config_path)
     print(json.dumps(inspect_lens_pair(config), indent=2, sort_keys=True))
+
+
+def _snapshot_validate(path: str) -> None:
+    snapshots = load_anchor_snapshots(path)
+    summary = validate_complete_snapshot_trials(snapshots)
+    if summary["incomplete_trials"]:
+        raise ValueError(
+            f"anchor snapshot file has incomplete trials: {summary['incomplete_trials']}"
+        )
+    print(json.dumps(summary, indent=2, sort_keys=True))
 
 
 def _zero_usage():

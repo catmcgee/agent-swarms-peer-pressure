@@ -229,6 +229,29 @@ class AnchorSnapshot:
             "target_text": self.target_text,
         }
 
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> AnchorSnapshot:
+        snapshot = cls(
+            schema_version=int(value.get("schema_version", 1)),
+            trial_id=str(value.get("trial_id", "")),
+            task_id=str(value.get("task_id", "")),
+            task_family=str(value.get("task_family", "")),
+            model_id=str(value.get("model_id", "")),
+            model_revision=_optional_string(value.get("model_revision")),
+            seed=int(value.get("seed", 0)),
+            condition=TrialCondition.from_dict(dict(value.get("condition") or {})),
+            board_id=value.get("board_id"),
+            anchor=Anchor(str(value["anchor"])),
+            messages=tuple(dict(item) for item in value.get("messages", [])),
+            tools=tuple(dict(item) for item in value.get("tools", [])),
+            target_mode=TargetMode(str(value["target_mode"])),
+            target_text=value.get("target_text"),
+        )
+        recorded_id = value.get("snapshot_id")
+        if recorded_id is not None and str(recorded_id) != snapshot.snapshot_id:
+            raise ValueError("recorded snapshot_id does not match trial and anchor")
+        return snapshot
+
 
 class SnapshotObserver(Protocol):
     def capture(self, snapshot: AnchorSnapshot) -> None: ...
@@ -404,6 +427,29 @@ def load_lens_records(
         raise ValueError("mechanistic record file is empty")
     _validate_record_provenance(records)
     return records
+
+
+def load_anchor_snapshots(path: str | Path) -> list[AnchorSnapshot]:
+    snapshots: list[AnchorSnapshot] = []
+    seen: set[str] = set()
+    with Path(path).open(encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            try:
+                snapshot = AnchorSnapshot.from_dict(json.loads(line))
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+                raise ValueError(f"invalid anchor snapshot on line {line_number}: {exc}") from exc
+            if snapshot.snapshot_id in seen:
+                raise ValueError(f"duplicate anchor snapshot ID: {snapshot.snapshot_id}")
+            seen.add(snapshot.snapshot_id)
+            snapshots.append(snapshot)
+    if not snapshots:
+        raise ValueError("anchor snapshot file is empty")
+    provenance = {(item.model_id, item.model_revision) for item in snapshots}
+    if len(provenance) != 1:
+        raise ValueError("anchor snapshot file mixes model revisions")
+    return snapshots
 
 
 def peer_delta_contrasts(
