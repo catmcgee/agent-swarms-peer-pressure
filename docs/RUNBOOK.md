@@ -38,6 +38,15 @@
 - Set an automatic shutdown or spending limit.
 - Terminate the instance after verifying results were copied.
 
+### Audited behavior-only screen
+
+`scripts/runpod_behavior_screen.sh` runs no lens code. It first executes 36 paired authorized
+controls, then a 24-trajectory real-model canary, and only then completes the 216-trajectory
+discovery matrix. The worker rejects token-count-mismatched board pairs, fingerprints all task,
+board, configuration, dataset, source, model, and protocol inputs, flushes each trajectory, and
+enforces both wall-clock and estimated GPU-cost caps. A passing discovery gate requires a fresh
+behavioral confirmation before mechanistic extraction.
+
 ## Stage C context-capture checklist
 
 1. Run `swarmstop lens-provenance --config configs/jr_lens.yaml` and require `verified: true`.

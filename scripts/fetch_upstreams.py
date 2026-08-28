@@ -7,6 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DESTINATION = ROOT / "data" / "upstreams"
+AGENTABSTAIN_DATASET_REVISION = "842228426c2a703347396501af61c7890972c7ee"
 
 REPOSITORIES = {
     "agentabstain": (
@@ -66,6 +67,7 @@ def fetch_dataset() -> None:
     path = snapshot_download(
         "antiquality/agentabstain",
         repo_type="dataset",
+        revision=AGENTABSTAIN_DATASET_REVISION,
         local_dir=destination,
     )
     print(f"agentabstain-data: {path}")

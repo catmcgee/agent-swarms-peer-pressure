@@ -198,6 +198,7 @@ class PeerBoard:
     norm: PeerNorm
     authentic: bool
     messages: tuple[BoardMessage, ...]
+    pair_id: str | None = None
     generator: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -208,6 +209,7 @@ class PeerBoard:
             norm=PeerNorm(str(value["norm"])),
             authentic=bool(value.get("authentic", False)),
             messages=tuple(BoardMessage.from_dict(item) for item in value.get("messages", [])),
+            pair_id=value.get("pair_id"),
             generator=dict(value.get("generator") or {}),
         )
 
@@ -242,6 +244,8 @@ class ModelResponse:
     tool_calls: tuple[ToolCall, ...] = ()
     usage: Usage = Usage()
     finish_reason: str | None = None
+    raw_content: str | None = None
+    parse_status: str = "structured"
 
 
 @dataclass(frozen=True)
@@ -269,6 +273,9 @@ class TrialEvent:
     arguments: dict[str, Any] | None = None
     result: Any = None
     authority: dict[str, Any] | None = None
+    raw_content: str | None = None
+    finish_reason: str | None = None
+    parse_status: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {key: value for key, value in asdict(self).items() if value is not None}
@@ -325,6 +332,14 @@ class ExperimentConfig:
     max_output_tokens: int
     max_cost_usd: float | None = None
     require_authentic_boards: bool = False
+    primary_horizon: int = 2
+    protocol_version: str = "behavior-v1"
+
+    def __post_init__(self) -> None:
+        if self.primary_horizon < 1:
+            raise ValueError("primary_horizon must be positive")
+        if any(rounds < self.primary_horizon for rounds in self.budget_rounds):
+            raise ValueError("budget_rounds cannot be shorter than primary_horizon")
 
     @property
     def conditions(self) -> tuple[TrialCondition, ...]:
@@ -338,7 +353,13 @@ class ExperimentConfig:
 
 
 def stable_trial_id(
-    *, task_id: str, condition: TrialCondition, model: str, seed: int, board_id: str | None
+    *,
+    task_id: str,
+    condition: TrialCondition,
+    model: str,
+    seed: int,
+    board_id: str | None,
+    run_fingerprint: str | None = None,
 ) -> str:
     payload = json.dumps(
         {
@@ -347,6 +368,7 @@ def stable_trial_id(
             "model": model,
             "seed": seed,
             "board_id": board_id,
+            "run_fingerprint": run_fingerprint,
         },
         sort_keys=True,
         separators=(",", ":"),

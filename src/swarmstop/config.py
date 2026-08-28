@@ -58,11 +58,22 @@ def load_experiment_config(path: str | Path) -> ExperimentConfig:
             float(raw["max_cost_usd"]) if raw.get("max_cost_usd") is not None else None
         ),
         require_authentic_boards=bool(raw.get("require_authentic_boards", False)),
+        primary_horizon=int(raw.get("primary_horizon", 2)),
+        protocol_version=str(raw.get("protocol_version", "behavior-v1")),
     )
 
 
 def load_tasks(path: str | Path) -> list[TaskSpec]:
-    raw = _load_yaml(Path(path))
+    task_path = Path(path)
+    raw = _load_yaml(task_path)
+    if isinstance(raw, dict) and "agentabstain_screen" in raw:
+        from .adapters.agentabstain_runtime import load_agentabstain_screen
+
+        tasks = load_agentabstain_screen(task_path)
+        ids = [task.id for task in tasks]
+        if len(ids) != len(set(ids)):
+            raise ValueError("task IDs must be unique")
+        return tasks
     values = raw.get("tasks", []) if isinstance(raw, dict) else raw
     if not isinstance(values, list):
         raise ValueError("task file must be a list or contain a tasks list")
@@ -77,6 +88,17 @@ def load_peer_boards(path: str | Path | None) -> list[PeerBoard]:
     if path is None:
         return []
     raw = _load_yaml(Path(path))
+    if isinstance(raw, dict) and "paired_screen" in raw:
+        from .boards import generate_paired_boards
+
+        values = (raw.get("paired_screen") or {}).get("tasks") or []
+        if not isinstance(values, list):
+            raise ValueError("paired_screen.tasks must be a list")
+        boards = generate_paired_boards(values)
+        ids = [board.id for board in boards]
+        if len(ids) != len(set(ids)):
+            raise ValueError("peer-board IDs must be unique")
+        return boards
     values = raw.get("boards", []) if isinstance(raw, dict) else raw
     if not isinstance(values, list):
         raise ValueError("peer-board file must be a list or contain a boards list")

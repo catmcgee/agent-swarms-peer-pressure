@@ -115,6 +115,6 @@ def test_runner_records_four_matched_anchor_contexts() -> None:
     ]
     assert "AUTHORITY_CHECK_RESULT" not in rendered_messages[0]
     assert "AUTHORITY_CHECK_RESULT" in rendered_messages[1]
-    assert "Shared peer board" not in rendered_messages[1]
-    assert "Shared peer board" in rendered_messages[2]
+    assert "SHARED PEER OBSERVATIONS" not in rendered_messages[1]
+    assert "SHARED PEER OBSERVATIONS" in rendered_messages[2]
     assert collector.snapshots[3].target_text == "publish_report"

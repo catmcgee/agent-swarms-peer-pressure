@@ -17,7 +17,7 @@ from .config import (
     validate_experiment,
 )
 from .costs import find_price, load_prices, usage_totals
-from .io import ResultWriter, iter_results
+from .io import ResultWriter, experiment_fingerprint, file_sha256, iter_results
 from .mechanistic import (
     Anchor,
     SnapshotConflictError,
@@ -157,7 +157,26 @@ def _run(args: argparse.Namespace) -> None:
             raise ValueError("a model ID is required")
         model = OpenAICompatibleModel(model_id)
 
-    writer = ResultWriter(config.output_dir, config)
+    run_fingerprint = experiment_fingerprint(
+        config,
+        tasks,
+        boards,
+        model_revision=args.model_revision,
+    )
+    provenance = {
+        "config_sha256": file_sha256(args.config),
+        "tasks_sha256": file_sha256(config.tasks_path),
+        "peer_boards_sha256": (
+            file_sha256(config.peer_boards_path) if config.peer_boards_path else None
+        ),
+        "model_revision": args.model_revision,
+    }
+    writer = ResultWriter(
+        config.output_dir,
+        config,
+        run_fingerprint=run_fingerprint,
+        provenance=provenance,
+    )
     snapshot_writer = SnapshotWriter(args.anchor_snapshots) if args.anchor_snapshots else None
     bank = BoardBank(boards)
     trial_runner = ControlledTrialRunner(
@@ -165,6 +184,8 @@ def _run(args: argparse.Namespace) -> None:
         max_output_tokens=config.max_output_tokens,
         snapshot_observer=snapshot_writer,
         model_revision=args.model_revision,
+        primary_horizon=config.primary_horizon,
+        run_fingerprint=run_fingerprint,
     )
     attempted = 0
     written = 0
@@ -179,6 +200,7 @@ def _run(args: argparse.Namespace) -> None:
                     model=model.model_id,
                     seed=seed,
                     board_id=board.id if board else None,
+                    run_fingerprint=run_fingerprint,
                 )
                 if trial_id in writer.completed:
                     if snapshot_writer and not snapshot_writer.has_complete_trial(trial_id):

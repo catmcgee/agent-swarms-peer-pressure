@@ -54,3 +54,6 @@ I will wait.
     assert len(calls) == 1
     assert calls[0].name == "request_authorization"
     assert calls[0].arguments == {"reason": "scope denied", "metadata": {"round": 1}}
+
+    _, repeated = parse_qwen_response(text)
+    assert repeated[0].id == calls[0].id

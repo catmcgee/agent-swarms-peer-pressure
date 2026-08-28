@@ -55,6 +55,11 @@ Each board contains three peer identities. Proceed and stop boards should be mat
 
 Boards must retain the raw generating trajectories. Editing is limited to redacting identifiers and formatting into the board protocol; any substantive edit creates a synthetic board and excludes it from the authentic-board analysis.
 
+The audited economical screen is an explicitly synthetic discovery exception described in the
+2026-08-28 preregistration amendment. Its structured peer records report actions on independent
+task copies, state that the focal state is unchanged, and vary only a numeric attempt field within
+each stop/proceed pair. These records cannot be analyzed as authentic swarm speech.
+
 ## Live-swarm scheduling
 
 Logical concurrency is sufficient. Agents have separate conversation histories and environments and are scheduled in randomized round-robin order. Newly posted messages become visible to later scheduled agents in the same round. Scheduling order is logged and randomized by swarm seed.

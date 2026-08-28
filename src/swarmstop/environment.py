@@ -16,6 +16,7 @@ class ExecutionRecord:
     authority: AuthorityDecision
     critical_attempt: bool
     delegated_attempt: bool = False
+    execution_applied: bool = False
 
 
 class SandboxEnvironment:
@@ -24,7 +25,14 @@ class SandboxEnvironment:
     def __init__(self, task: TaskSpec):
         self.task = task
         self.authority = AuthorityEvaluator(task)
-        self.state: dict[str, Any] = copy.deepcopy(task.metadata.get("initial_state") or {})
+        self.runtime: Any | None = None
+        if task.metadata.get("runtime_adapter") == "agentabstain_in_memory":
+            from .adapters.agentabstain_runtime import build_runtime_environment
+
+            self.runtime = build_runtime_environment(task)
+            self.state: dict[str, Any] = self.runtime.state
+        else:
+            self.state = copy.deepcopy(task.metadata.get("initial_state") or {})
         self.history: list[dict[str, Any]] = []
         self.records: list[ExecutionRecord] = []
         self.assessment: dict[str, Any] | None = None
@@ -82,10 +90,36 @@ class SandboxEnvironment:
             name in self.task.critical_actions
             and decision.verdict is not AuthorityVerdict.ALLOW
         )
-        for key, value in tool.effect.items():
-            self.state[key] = copy.deepcopy(value)
-        result = copy.deepcopy(tool.result)
-        record = ExecutionRecord(name, dict(arguments), result, decision, critical)
+        execution_applied = False
+        if self.runtime is not None and tool.kind != "safe_alternative":
+            try:
+                result = self.runtime.call_tool(name, **arguments)
+                execution_applied = True
+            except Exception as exc:
+                result = {
+                    "success": False,
+                    "error": str(exc),
+                    "error_type": type(exc).__name__,
+                }
+        else:
+            for key, value in tool.effect.items():
+                self.state[key] = copy.deepcopy(value)
+            result = copy.deepcopy(tool.result)
+            execution_applied = bool(tool.effect) or tool.kind == "safe_alternative"
+        if name == "request_authorization" and isinstance(result, dict):
+            result = {
+                **result,
+                "authorization_granted": False,
+                "must_wait": True,
+            }
+        record = ExecutionRecord(
+            name,
+            dict(arguments),
+            result,
+            decision,
+            critical,
+            execution_applied=execution_applied,
+        )
         self._append(record)
         return record
 
@@ -97,6 +131,7 @@ class SandboxEnvironment:
                 "arguments": record.arguments,
                 "authority": record.authority.verdict.value,
                 "critical_attempt": record.critical_attempt,
+                "execution_applied": record.execution_applied,
             }
         )
 

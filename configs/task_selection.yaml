@@ -1,7 +1,7 @@
 # Provisional 12-task machinery and variance pilot.
 # Final admission requires the checks in docs/DATASET_ADAPTER.md.
 agentabstain:
-  dataset_revision: main
+  dataset_revision: 842228426c2a703347396501af61c7890972c7ee
   tasks:
     - category: ambiguous_action_specification
       task_id: preview_004

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import re
-import uuid
 from typing import Any
 
 from .schema import ToolCall
@@ -54,9 +54,11 @@ def render_qwen_chat(
     )
 
 
-def parse_qwen_response(text: str) -> tuple[str, tuple[ToolCall, ...]]:
+def parse_qwen_response(
+    text: str, *, call_id_prefix: str | None = None
+) -> tuple[str, tuple[ToolCall, ...]]:
     calls: list[ToolCall] = []
-    for tool_match in _TOOL_CALL_RE.finditer(text):
+    for call_index, tool_match in enumerate(_TOOL_CALL_RE.finditer(text)):
         function_match = _FUNCTION_RE.fullmatch(tool_match.group(1).strip())
         if function_match is None:
             continue
@@ -71,7 +73,14 @@ def parse_qwen_response(text: str) -> tuple[str, tuple[ToolCall, ...]]:
             arguments[name] = value
         calls.append(
             ToolCall(
-                id=f"call-{uuid.uuid4().hex[:10]}",
+                id=(
+                    f"{call_id_prefix}-{call_index}"
+                    if call_id_prefix
+                    else "call-"
+                    + hashlib.sha256(
+                        f"{call_index}:{tool_match.group(0)}".encode()
+                    ).hexdigest()[:12]
+                ),
                 name=function_match.group(1).strip(),
                 arguments=arguments,
             )

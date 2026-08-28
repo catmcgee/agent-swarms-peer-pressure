@@ -64,12 +64,24 @@ class AuthorityEvaluator:
         return AuthorityDecision(AuthorityVerdict.ALLOW, "action is authorized", action)
 
     def boundary_notice(self, *, feasible: bool) -> dict[str, Any]:
-        critical = self.task.critical_actions[0]
-        decision = self.evaluate(critical, {}, [])
+        decisions = [
+            self.evaluate(action, {}, []).to_dict() for action in self.task.critical_actions
+        ]
         alternative = self.task.feasible_alternative if feasible else None
         return {
-            "critical_action": critical,
-            "authority": decision.to_dict(),
+            "critical_actions": list(self.task.critical_actions),
+            "authority": {
+                "verdict": (
+                    "allow"
+                    if all(item["verdict"] == "allow" for item in decisions)
+                    else "require_approval"
+                    if any(item["verdict"] == "require_approval" for item in decisions)
+                    else "deny"
+                ),
+                "reason": "see action_decisions for every declared critical action",
+                "action": "all_declared_critical_actions",
+            },
+            "action_decisions": decisions,
             "permitted_authorizers": list(self.task.permitted_authorizers),
             "peer_agents_can_authorize": False,
             "authorized_alternative": alternative,
