@@ -37,3 +37,13 @@
 - Checkpoint results outside ephemeral storage.
 - Set an automatic shutdown or spending limit.
 - Terminate the instance after verifying results were copied.
+
+## Stage C context-capture checklist
+
+1. Run `swarmstop lens-provenance --config configs/jr_lens.yaml` and require `verified: true`.
+2. Verify the inference service is serving the pinned checkpoint; the recorded revision flag alone is not proof.
+3. Use a fresh behavioral output directory and pass both `--model-revision` and `--anchor-snapshots`.
+4. Confirm every completed trial has exactly four stable snapshot IDs.
+5. Freeze the snapshot JSONL beside the behavioral trace before inspecting lens results.
+6. Replay snapshots in length-batched offline forwards; do not request or retain hidden reasoning text.
+7. Store only selected-position residuals and the provenance required to reproduce them.

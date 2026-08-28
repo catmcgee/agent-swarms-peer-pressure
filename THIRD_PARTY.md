@@ -29,6 +29,9 @@ SwarmStop does not vendor benchmark source or data. The fetch script downloads p
 - Lens artifact license: MIT
 - J-lens SHA-256: `e9396f37eec4c031462b24559b0360027ac45d5944628214301b8e54883b58f3`
 - R-lens SHA-256: `76c7372c52b453958e064e4d366fa868cb3733460728236cf2e9fa6bdb632d52`
+- Reference implementation: https://github.com/anthropics/jacobian-lens
+- Pinned reference implementation commit: `581d398613e5602a5af361e1c34d3a92ea82ba8e`
+- Reference implementation license: Apache 2.0
 
 The lens archives identify the model but do not record its repository revision. The pinned model commit is the last content upload before the lens release; the only subsequent repository change before this project pinned it was to `README.md`. This supports content equivalence but is not a cryptographic record of the authors' local model checkout.
 

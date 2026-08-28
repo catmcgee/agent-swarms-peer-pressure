@@ -5,7 +5,10 @@ import pytest
 
 from swarmstop.mechanistic import (
     Anchor,
+    AnchorSnapshot,
     LensAnchorRecord,
+    SnapshotWriter,
+    TargetMode,
     load_concept_registry,
     load_mechanistic_config,
     peer_delta_contrasts,
@@ -109,3 +112,36 @@ def test_anchor_enum_matches_protocol_names() -> None:
         Anchor.POST_PEER,
         Anchor.ACTION_DECISION,
     )
+
+
+def test_snapshot_writer_is_resumable_and_rejects_changed_context(tmp_path: Path) -> None:
+    path = tmp_path / "snapshots.jsonl"
+    snapshot = AnchorSnapshot(
+        schema_version=1,
+        trial_id="trial-1",
+        task_id="task-1",
+        task_family="family-1",
+        model_id="model-1",
+        model_revision="revision-1",
+        seed=1,
+        condition=_record("trial-1", "stop", "post_peer", 0.9).condition,
+        board_id="board-1",
+        anchor=Anchor.POST_PEER,
+        messages=({"role": "user", "content": "test"},),
+        tools=(),
+        target_mode=TargetMode.LAST_PROMPT_TOKEN,
+    )
+    writer = SnapshotWriter(path)
+
+    writer.capture(snapshot)
+    writer.capture(snapshot)
+    resumed = SnapshotWriter(path)
+
+    assert len(path.read_text(encoding="utf-8").splitlines()) == 1
+    assert resumed.has_complete_trial("trial-1") is False
+
+    changed = AnchorSnapshot(
+        **{**snapshot.__dict__, "messages": ({"role": "user", "content": "changed"},)}
+    )
+    with pytest.raises(ValueError, match="snapshot changed"):
+        resumed.capture(changed)

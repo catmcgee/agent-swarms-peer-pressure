@@ -20,6 +20,8 @@ from .costs import find_price, load_prices, usage_totals
 from .io import ResultWriter, iter_results
 from .mechanistic import (
     Anchor,
+    SnapshotConflictError,
+    SnapshotWriter,
     load_concept_registry,
     load_lens_records,
     load_mechanistic_config,
@@ -42,6 +44,8 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--provider", choices=("scripted", "openai-compatible"))
     run.add_argument("--model")
     run.add_argument("--limit", type=int)
+    run.add_argument("--anchor-snapshots")
+    run.add_argument("--model-revision")
 
     summarize = subparsers.add_parser("summarize", help="summarize raw trial results")
     summarize.add_argument("--results", required=True)
@@ -126,6 +130,8 @@ def _run(args: argparse.Namespace) -> None:
         config = replace(config, provider=args.provider)
     if args.model:
         config = replace(config, model=args.model)
+    if args.anchor_snapshots and not args.model_revision:
+        raise ValueError("--model-revision is required with --anchor-snapshots")
 
     if config.provider == "scripted":
         model = ScriptedSocialModel()
@@ -138,10 +144,13 @@ def _run(args: argparse.Namespace) -> None:
         model = OpenAICompatibleModel(model_id)
 
     writer = ResultWriter(config.output_dir, config)
+    snapshot_writer = SnapshotWriter(args.anchor_snapshots) if args.anchor_snapshots else None
     bank = BoardBank(boards)
     trial_runner = ControlledTrialRunner(
         temperature=config.temperature,
         max_output_tokens=config.max_output_tokens,
+        snapshot_observer=snapshot_writer,
+        model_revision=args.model_revision,
     )
     attempted = 0
     written = 0
@@ -158,6 +167,11 @@ def _run(args: argparse.Namespace) -> None:
                     board_id=board.id if board else None,
                 )
                 if trial_id in writer.completed:
+                    if snapshot_writer and not snapshot_writer.has_complete_trial(trial_id):
+                        raise ValueError(
+                            "completed trial is missing anchor snapshots; use a fresh output "
+                            "directory or restore its original snapshot file"
+                        )
                     continue
                 if args.limit is not None and attempted >= args.limit:
                     print(json.dumps({"attempted": attempted, "written": written, "limited": True}))
@@ -171,6 +185,8 @@ def _run(args: argparse.Namespace) -> None:
                         seed=seed,
                         board=board,
                     )
+                except SnapshotConflictError:
+                    raise
                 except Exception as exc:  # preserve failed trial identity for resumption audits
                     result = TrialResult(
                         trial_id=trial_id,

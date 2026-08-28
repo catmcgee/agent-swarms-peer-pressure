@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import copy
 import json
 from typing import Any
 
 from .boards import render_board
 from .environment import ASSESSMENT_TOOL, DELEGATION_TOOL, SandboxEnvironment
+from .mechanistic import Anchor, AnchorSnapshot, SnapshotObserver, TargetMode
 from .model import ModelClient
 from .schema import (
     Feasibility,
@@ -22,9 +24,18 @@ from .scoring import score_events
 
 
 class ControlledTrialRunner:
-    def __init__(self, *, temperature: float = 0.7, max_output_tokens: int = 800):
+    def __init__(
+        self,
+        *,
+        temperature: float = 0.7,
+        max_output_tokens: int = 800,
+        snapshot_observer: SnapshotObserver | None = None,
+        model_revision: str | None = None,
+    ):
         self.temperature = temperature
         self.max_output_tokens = max_output_tokens
+        self.snapshot_observer = snapshot_observer
+        self.model_revision = model_revision
 
     def run(
         self,
@@ -43,6 +54,14 @@ class ControlledTrialRunner:
             raise ValueError("absent condition cannot receive a peer board")
         if board is not None and board.norm is not condition.peer_norm:
             raise ValueError("peer board norm does not match condition")
+
+        trial_id = stable_trial_id(
+            task_id=task.id,
+            condition=condition,
+            model=model.model_id,
+            seed=seed,
+            board_id=board.id if board else None,
+        )
 
         environment = SandboxEnvironment(task)
         events: list[TrialEvent] = []
@@ -76,6 +95,27 @@ class ControlledTrialRunner:
                 )
             )
 
+        visible_task_tools = [
+            tool
+            for tool in task.tools
+            if not (
+                condition.feasibility is Feasibility.IMPOSSIBLE
+                and tool.name == task.feasible_alternative
+            )
+        ]
+        action_tools = [tool.as_model_tool() for tool in visible_task_tools] + [DELEGATION_TOOL]
+        self._capture_snapshot(
+            trial_id=trial_id,
+            task=task,
+            condition=condition,
+            model_id=model.model_id,
+            seed=seed,
+            board=board,
+            anchor=Anchor.PRE_AUTHORITY,
+            messages=messages,
+            tools=action_tools,
+        )
+
         boundary = environment.authority.boundary_notice(
             feasible=condition.feasibility is Feasibility.FEASIBLE
         )
@@ -108,6 +148,17 @@ class ControlledTrialRunner:
             environment=environment,
             events=events,
         )
+        self._capture_snapshot(
+            trial_id=trial_id,
+            task=task,
+            condition=condition,
+            model_id=model.model_id,
+            seed=seed,
+            board=board,
+            anchor=Anchor.POST_RECOGNITION,
+            messages=messages,
+            tools=action_tools,
+        )
 
         board_text = render_board(board)
         messages.append({"role": "system", "content": board_text})
@@ -120,25 +171,51 @@ class ControlledTrialRunner:
                 content=board_text,
             )
         )
+        self._capture_snapshot(
+            trial_id=trial_id,
+            task=task,
+            condition=condition,
+            model_id=model.model_id,
+            seed=seed,
+            board=board,
+            anchor=Anchor.POST_PEER,
+            messages=messages,
+            tools=action_tools,
+        )
 
-        visible_task_tools = [
-            tool
-            for tool in task.tools
-            if not (
-                condition.feasibility is Feasibility.IMPOSSIBLE
-                and tool.name == task.feasible_alternative
-            )
-        ]
-        tools = [tool.as_model_tool() for tool in visible_task_tools] + [DELEGATION_TOOL]
         for round_number in range(1, condition.budget_rounds + 1):
             response = model.complete(
                 messages=messages,
-                tools=tools,
+                tools=action_tools,
                 seed=seed + round_number,
                 temperature=self.temperature,
                 max_output_tokens=self.max_output_tokens,
             )
             usage = usage + response.usage
+            if round_number == 1:
+                action_messages = [*messages, self._assistant_message(response)]
+                target_text = (
+                    response.tool_calls[0].name
+                    if response.tool_calls
+                    else (response.content if response.content.strip() else None)
+                )
+                self._capture_snapshot(
+                    trial_id=trial_id,
+                    task=task,
+                    condition=condition,
+                    model_id=model.model_id,
+                    seed=seed,
+                    board=board,
+                    anchor=Anchor.ACTION_DECISION,
+                    messages=action_messages,
+                    tools=action_tools,
+                    target_mode=(
+                        TargetMode.BEFORE_TEXT
+                        if target_text is not None
+                        else TargetMode.LAST_PROMPT_TOKEN
+                    ),
+                    target_text=target_text,
+                )
             critical = self._record_response(
                 response=response,
                 phase="post_recognition",
@@ -154,13 +231,6 @@ class ControlledTrialRunner:
             if critical or safe_alternative_used or not response.tool_calls:
                 break
 
-        trial_id = stable_trial_id(
-            task_id=task.id,
-            condition=condition,
-            model=model.model_id,
-            seed=seed,
-            board_id=board.id if board else None,
-        )
         return TrialResult(
             trial_id=trial_id,
             task_id=task.id,
@@ -173,6 +243,7 @@ class ControlledTrialRunner:
             score=score_events(task, events),
             metadata={
                 "board_authentic": board.authentic if board else None,
+                "model_revision": self.model_revision,
                 "boundary": boundary,
                 "temperature": self.temperature,
                 "max_output_tokens": self.max_output_tokens,
@@ -198,23 +269,7 @@ class ControlledTrialRunner:
                 content=response.content,
             )
         )
-        assistant_message: dict[str, Any] = {
-            "role": "assistant",
-            "content": response.content or None,
-        }
-        if response.tool_calls:
-            assistant_message["tool_calls"] = [
-                {
-                    "id": call.id,
-                    "type": "function",
-                    "function": {
-                        "name": call.name,
-                        "arguments": json.dumps(call.arguments, sort_keys=True),
-                    },
-                }
-                for call in response.tool_calls
-            ]
-        messages.append(assistant_message)
+        messages.append(ControlledTrialRunner._assistant_message(response))
 
         critical = False
         for call in response.tool_calls:
@@ -243,3 +298,59 @@ class ControlledTrialRunner:
                 }
             )
         return critical
+
+    @staticmethod
+    def _assistant_message(response: ModelResponse) -> dict[str, Any]:
+        assistant_message: dict[str, Any] = {
+            "role": "assistant",
+            "content": response.content or None,
+        }
+        if response.tool_calls:
+            assistant_message["tool_calls"] = [
+                {
+                    "id": call.id,
+                    "type": "function",
+                    "function": {
+                        "name": call.name,
+                        "arguments": json.dumps(call.arguments, sort_keys=True),
+                    },
+                }
+                for call in response.tool_calls
+            ]
+        return assistant_message
+
+    def _capture_snapshot(
+        self,
+        *,
+        trial_id: str,
+        task: TaskSpec,
+        condition: TrialCondition,
+        model_id: str,
+        seed: int,
+        board: PeerBoard | None,
+        anchor: Anchor,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        target_mode: TargetMode = TargetMode.LAST_PROMPT_TOKEN,
+        target_text: str | None = None,
+    ) -> None:
+        if self.snapshot_observer is None:
+            return
+        self.snapshot_observer.capture(
+            AnchorSnapshot(
+                schema_version=1,
+                trial_id=trial_id,
+                task_id=task.id,
+                task_family=task.family,
+                model_id=model_id,
+                model_revision=self.model_revision,
+                seed=seed,
+                condition=condition,
+                board_id=board.id if board else None,
+                anchor=anchor,
+                messages=tuple(copy.deepcopy(messages)),
+                tools=tuple(copy.deepcopy(tools)),
+                target_mode=target_mode,
+                target_text=target_text,
+            )
+        )

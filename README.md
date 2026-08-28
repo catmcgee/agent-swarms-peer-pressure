@@ -32,7 +32,7 @@ The repository currently contains:
 
 No empirical claims should be made from the included synthetic smoke tasks. They exist only to validate the machinery.
 
-The exploratory mechanistic phase now also has a frozen concept registry, a four-anchor record schema, remote artifact provenance checks, and an offline proceed-versus-stop contrast. Model, tokenizer, artifact revision, artifact size, and artifact hashes are pinned.
+The exploratory mechanistic phase now also has a frozen concept registry, resumable four-anchor context snapshots, a readout record schema, remote artifact provenance checks, and an offline proceed-versus-stop contrast. Model, tokenizer, artifact revision, artifact size, and artifact hashes are pinned.
 
 ## Quick start
 
@@ -50,6 +50,17 @@ swarmstop lens-validate --config configs/jr_lens.yaml
 swarmstop lens-provenance --config configs/jr_lens.yaml
 pytest
 ```
+
+To preserve replayable contexts during a pinned-model run, use a fresh result directory and add:
+
+```bash
+swarmstop run \
+  --config configs/pilot.yaml \
+  --model-revision YOUR_VERIFIED_MODEL_REVISION \
+  --anchor-snapshots results/pilot-template/anchor-snapshots.jsonl
+```
+
+The revision flag records provenance; it does not prove that a hosted endpoint serves those weights. Use it for Stage C only when the inference service is pinned independently.
 
 To call a hosted or self-hosted OpenAI-compatible endpoint:
 

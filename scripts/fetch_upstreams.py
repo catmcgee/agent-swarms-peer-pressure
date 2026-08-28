@@ -17,6 +17,10 @@ REPOSITORIES = {
         "https://github.com/yazcaleb/can-is-not-may.git",
         "da8a0ce8c779da067ccf6caa5dd311c1ff443960",
     ),
+    "jacobian-lens": (
+        "https://github.com/anthropics/jacobian-lens.git",
+        "581d398613e5602a5af361e1c34d3a92ea82ba8e",
+    ),
 }
 
 

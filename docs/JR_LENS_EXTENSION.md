@@ -103,6 +103,8 @@ Stop Stage C before scaling if any gate fails: no behavioral reversal, incompati
 
 Each JSONL readout record is keyed by trial, task family, condition, anchor, and layer. It must include exact model/tokenizer provenance, optional activation storage metadata, and complete concept scores for every included lens. `swarmstop lens-compare` computes the within-trial T2-minus-T1 change first and then the descriptive proceed-minus-stop contrast separately for every layer, lens, and frozen concept. It performs no significance testing and is not a substitute for the held-out or causal analyses above.
 
+The controlled runner can also write a resumable `anchor-snapshots.jsonl`. Each trial receives four stable snapshot IDs. T0, T1, and T2 use the same visible action-tool schemas so the T2-minus-T1 contrast changes the peer board rather than the available actions. T3 stores the first generated action and a selector for the token immediately before its tool name or visible answer. Snapshot conflicts under an existing stable ID fail closed. Hidden-state extraction is intentionally offline so contexts can be length-batched and model inference is not repeated inside the behavioral loop.
+
 ## Sources
 
 - R-lens post: https://www.alignmentforum.org/posts/nv8oedrnLXKRzNEL9/r-lens-making-j-lens-more-faithful-on-early-layers

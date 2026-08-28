@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 from collections import defaultdict
@@ -7,7 +8,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from statistics import fmean
-from typing import Any
+from typing import Any, Protocol
 
 import yaml
 
@@ -25,6 +26,11 @@ class LensKind(StrEnum):
     J = "j"
     R = "r"
     LOGIT = "logit"
+
+
+class TargetMode(StrEnum):
+    LAST_PROMPT_TOKEN = "last_prompt_token"
+    BEFORE_TEXT = "before_text"
 
 
 @dataclass(frozen=True)
@@ -171,6 +177,114 @@ class LensAnchorRecord:
                 else None
             ),
         )
+
+
+@dataclass(frozen=True)
+class AnchorSnapshot:
+    schema_version: int
+    trial_id: str
+    task_id: str
+    task_family: str
+    model_id: str
+    model_revision: str | None
+    seed: int
+    condition: TrialCondition
+    board_id: str | None
+    anchor: Anchor
+    messages: tuple[dict[str, Any], ...]
+    tools: tuple[dict[str, Any], ...]
+    target_mode: TargetMode
+    target_text: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.schema_version != 1:
+            raise ValueError(f"unsupported anchor snapshot schema: {self.schema_version}")
+        if not self.trial_id or not self.task_id or not self.task_family or not self.model_id:
+            raise ValueError("snapshot trial, task, family, and model identifiers are required")
+        if self.target_mode is TargetMode.BEFORE_TEXT and not self.target_text:
+            raise ValueError("before_text snapshots require target_text")
+        if self.target_mode is TargetMode.LAST_PROMPT_TOKEN and self.target_text is not None:
+            raise ValueError("last_prompt_token snapshots cannot set target_text")
+
+    @property
+    def snapshot_id(self) -> str:
+        return f"{self.trial_id}::{self.anchor.value}"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "snapshot_id": self.snapshot_id,
+            "trial_id": self.trial_id,
+            "task_id": self.task_id,
+            "task_family": self.task_family,
+            "model_id": self.model_id,
+            "model_revision": self.model_revision,
+            "seed": self.seed,
+            "condition": self.condition.to_dict(),
+            "board_id": self.board_id,
+            "anchor": self.anchor.value,
+            "messages": list(self.messages),
+            "tools": list(self.tools),
+            "target_mode": self.target_mode.value,
+            "target_text": self.target_text,
+        }
+
+
+class SnapshotObserver(Protocol):
+    def capture(self, snapshot: AnchorSnapshot) -> None: ...
+
+
+class SnapshotConflictError(ValueError):
+    pass
+
+
+class SnapshotWriter:
+    def __init__(self, path: str | Path):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._fingerprints = self._load_fingerprints()
+
+    def capture(self, snapshot: AnchorSnapshot) -> None:
+        payload = snapshot.to_dict()
+        fingerprint = _payload_fingerprint(payload)
+        existing = self._fingerprints.get(snapshot.snapshot_id)
+        if existing is not None:
+            if existing != fingerprint:
+                raise SnapshotConflictError(
+                    f"snapshot changed for stable ID {snapshot.snapshot_id}"
+                )
+            return
+        with self.path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n")
+            handle.flush()
+        self._fingerprints[snapshot.snapshot_id] = fingerprint
+
+    def has_complete_trial(self, trial_id: str) -> bool:
+        return all(f"{trial_id}::{anchor.value}" in self._fingerprints for anchor in Anchor)
+
+    def _load_fingerprints(self) -> dict[str, str]:
+        if not self.path.exists():
+            return {}
+        fingerprints: dict[str, str] = {}
+        with self.path.open(encoding="utf-8") as handle:
+            for line_number, line in enumerate(handle, start=1):
+                if not line.strip():
+                    continue
+                try:
+                    payload = json.loads(line)
+                    snapshot_id = str(payload["snapshot_id"])
+                except (KeyError, TypeError, json.JSONDecodeError) as exc:
+                    raise ValueError(
+                        f"invalid anchor snapshot on line {line_number}: {exc}"
+                    ) from exc
+                fingerprint = _payload_fingerprint(payload)
+                existing = fingerprints.get(snapshot_id)
+                if existing is not None and existing != fingerprint:
+                    raise SnapshotConflictError(
+                        f"conflicting records for snapshot ID {snapshot_id}"
+                    )
+                fingerprints[snapshot_id] = fingerprint
+        return fingerprints
 
 
 def load_concept_registry(path: str | Path) -> ConceptRegistry:
@@ -387,6 +501,11 @@ def _optional_string(value: Any) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _payload_fingerprint(payload: dict[str, Any]) -> str:
+    serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(serialized.encode()).hexdigest()
 
 
 def _load_yaml(path: Path) -> Any:
