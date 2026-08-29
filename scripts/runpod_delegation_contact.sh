@@ -39,8 +39,19 @@ if grep -q 'Qwen3.5-122B-A10B-GPTQ-Int4' "$diagnostic_config"; then
   python -m pip install --no-build-isolation 'gptqmodel==7.3.5'
 fi
 python -m pip install --no-deps \
-  'torchvision==0.24.1' \
+  'torchvision==0.23.0' \
   --index-url https://download.pytorch.org/whl/cu128
+python - <<'PY'
+import torch
+import torchvision
+from transformers import AutoProcessor
+
+if not torch.__version__.startswith("2.8."):
+    raise RuntimeError(f"expected PyTorch 2.8.x, found {torch.__version__}")
+if not torchvision.__version__.startswith("0.23."):
+    raise RuntimeError(f"expected torchvision 0.23.x, found {torchvision.__version__}")
+print(f"validated torch={torch.__version__} torchvision={torchvision.__version__}")
+PY
 python -m pip install -e . --no-deps
 python scripts/fetch_upstreams.py --source
 if [[ ! -s data/upstreams/agentabstain-data/tasks.jsonl ]]; then

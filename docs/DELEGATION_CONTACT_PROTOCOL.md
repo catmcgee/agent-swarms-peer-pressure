@@ -240,3 +240,14 @@ billing-start timestamp when resuming setup, so failed setup time remains inside
 the same cumulative cap. Transfer of the already locally verified dataset at
 the pinned revision is permitted. This amendment changes no task, prompt,
 factor, seed, endpoint, gate, model, or analysis rule.
+
+### 2026-08-29 — pre-inference runtime compatibility correction
+
+The next setup attempt also ended before model loading or any experimental
+response. The worker image supplies PyTorch 2.8, but the wrapper installed the
+torchvision 0.24 line, causing the model processor import to fail. Pin the
+matching CUDA torchvision 0.23 line and require successful PyTorch,
+torchvision, and model-processor imports before source validation or model
+loading. Continue to use the original pod billing-start timestamp and preserve
+the failed session and launcher logs. This amendment changes no task, prompt,
+factor, seed, endpoint, gate, model, or analysis rule.

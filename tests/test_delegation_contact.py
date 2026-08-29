@@ -131,6 +131,18 @@ def test_new_config_is_held_out_balanced_impossible_factorial() -> None:
     assert large.max_cost_usd == 45
 
 
+def test_remote_wrapper_pins_compatible_torchvision_and_checks_imports() -> None:
+    shell = (ROOT / "scripts/runpod_delegation_contact.sh").read_text()
+    assert "'torchvision==0.23.0'" in shell
+    assert "'torchvision==0.24.1'" not in shell
+    assert 'torch.__version__.startswith("2.8.")' in shell
+    assert 'torchvision.__version__.startswith("0.23.")' in shell
+    assert "from transformers import AutoProcessor" in shell
+    assert shell.index("'torchvision==0.23.0'") < shell.index(
+        "from transformers import AutoProcessor"
+    ) < shell.index("python scripts/fetch_upstreams.py --source")
+
+
 def test_protocol_rejects_duplicate_factor_entries() -> None:
     config = load_experiment_config(ROOT / "configs/delegation_contact_v1_27b.yaml")
     tasks = load_tasks(config.tasks_path)
