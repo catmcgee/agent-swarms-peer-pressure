@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-billing_start_unix=$(date +%s)
+billing_start_unix=${DIAGNOSTIC_BILLING_START_UNIX:-$(date +%s)}
+if [[ ! "$billing_start_unix" =~ ^[0-9]+$ ]] || [[ "$billing_start_unix" -le 0 ]]; then
+  echo "DIAGNOSTIC_BILLING_START_UNIX must be a positive Unix timestamp" >&2
+  exit 2
+fi
 cd /workspace/swarmstop
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "refusing to run a dirty worktree" >&2

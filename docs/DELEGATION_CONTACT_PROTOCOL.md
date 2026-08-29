@@ -231,4 +231,12 @@ behavioral result.
 
 ## Amendments
 
-None.
+### 2026-08-29 — pre-inference setup-resume accounting
+
+The first remote setup attempt ended before model loading or any experimental
+response because the pinned dataset downloader encountered an empty-file-list
+client error. Permit the worker wrapper to receive the immutable original pod
+billing-start timestamp when resuming setup, so failed setup time remains inside
+the same cumulative cap. Transfer of the already locally verified dataset at
+the pinned revision is permitted. This amendment changes no task, prompt,
+factor, seed, endpoint, gate, model, or analysis rule.
