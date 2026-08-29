@@ -1,0 +1,11 @@
+{
+  "action_malformed": 0,
+  "completed": 24,
+  "expected": 24,
+  "invalid_intended_action": 0,
+  "recognition_malformed": 0,
+  "recognition_unadvertised_calls": 0,
+  "recognition_visible_text": 0,
+  "structured_compliance": 24,
+  "structured_compliance_rate": 1.0
+}

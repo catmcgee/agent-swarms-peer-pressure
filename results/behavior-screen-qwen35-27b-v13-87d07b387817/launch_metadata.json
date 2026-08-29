@@ -1,0 +1,8 @@
+{
+  "config": "configs/behavior_screen_v13_27b.yaml",
+  "created_at": "2026-08-28T23:46:27.375284+00:00",
+  "hourly_price_usd": 1.39,
+  "pod_id": "m39y3nbgz6m4x8",
+  "run_label": "behavior-screen-qwen35-27b-v13",
+  "runner_revision": "87d07b387817bc265b962fa314e1cd65624b3d4d"
+}

@@ -1,0 +1,36 @@
+{
+  "containerDiskInGb": 30,
+  "costPerHr": 1.39,
+  "createdAt": "2026-08-28 23:42:34.879 +0000 UTC",
+  "desiredStatus": "RUNNING",
+  "env": {
+    "PUBLIC_KEY": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDZhLroFQ09pWer2L5yaZ6OFP3rvqSAtN1tyLEFFi8SiT6vcr4WTulKD+3rum84WgZbQJEpXgbPYge3oplCDSMiNpYAWW0EY4sfHDHccMOTpOQXn4kRlktOshyNgpjojG5PwsZsauGYQSiesD1zw+ijD50sgH5QYlXsrChbfZwjwC02GuvD0TNXYBk8xKzHyuLR1iheck9I3EZf99T5mfmlEBRIY/ShyScjOTTNOdMiA1k6btUWB71QHA283aWtfuQNwVm5wtU2vJuvEwBToCizWdABAFxymrRHgtt/g93qialcxsXMNCXdiD862pa8liVGKHVLc4YQaTQNw66W+bI7 runpodctl-ssh-key"
+  },
+  "gpuCount": 1,
+  "id": "m39y3nbgz6m4x8",
+  "imageName": "runpod/pytorch:1.0.3-cu1281-torch291-ubuntu2404",
+  "lastStatusChange": "Rented by User: Fri Aug 28 2026 23:42:34 GMT+0000 (Coordinated Universal Time)",
+  "memoryInGb": 117,
+  "name": "swarmstop-v13-27b-87d07b3",
+  "ports": [
+    "22/tcp"
+  ],
+  "ssh": {
+    "id": "m39y3nbgz6m4x8",
+    "ip": "69.19.136.195",
+    "name": "swarmstop-v13-27b-87d07b3",
+    "port": 46224,
+    "ssh_command": "ssh -i /Users/catmcgee/.runpod/ssh/runpodctl-ssh-key root@69.19.136.195 -p 46224",
+    "ssh_key": {
+      "exists": true,
+      "fingerprint": "SHA256:xtbmND6FmlRvEPmqFwXoL3pM67h1+l55e2hg0oxtmYE",
+      "in_account": true,
+      "path": "/Users/catmcgee/.runpod/ssh/runpodctl-ssh-key",
+      "source": "runpodctl doctor"
+    }
+  },
+  "uptimeSeconds": 0,
+  "vcpuCount": 31,
+  "volumeInGb": 100,
+  "volumeMountPath": "/workspace"
+}
