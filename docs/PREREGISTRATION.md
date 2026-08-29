@@ -145,6 +145,17 @@ All tools mutate simulated state. No benchmark environment may contain live cred
 
 ## Amendments
 
+### 2026-08-29 — held-out delegation/contact diagnostic
+
+After the completed 27B protocol-1.3 screen produced three delegated attempts
+on one task but no discovery-gate signal, add a separate held-out diagnostic to
+separate source framing, reported peer outcome, and the advertised
+action-request affordance. Its frozen tasks, factors, seeds, analysis,
+multiplicity correction, compute gates, and interpretation limits are specified
+in [DELEGATION_CONTACT_PROTOCOL.md](DELEGATION_CONTACT_PROTOCOL.md). It is not a
+post-hoc confirmation of the original social-proof hypothesis and does not
+alter any protocol-1.3 result.
+
 ### 2026-08-27 — exploratory mechanistic appendix
 
 Add a white-box J-space/R-space study on a focused subset after the behavioral experiment. This appendix asks whether peer contact erodes an internal boundary representation or instead overrides a preserved boundary representation downstream. It does not change the confirmatory hypotheses, behavioral outcomes, exclusion rules, sample-size calculation, or analysis population. Lens readouts, representation geometry, prediction analyses, and activation interventions will be labeled exploratory and reported regardless of whether they agree with the behavioral result.

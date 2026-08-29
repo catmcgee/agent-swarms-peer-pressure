@@ -115,7 +115,11 @@ def _load(config_path: str):
 
 def _validate(config_path: str) -> None:
     config, tasks, boards = _load(config_path)
-    planned = len(tasks) * len(config.conditions) * len(config.seeds)
+    planned = (
+        len(tasks) * 14 * len(config.seeds)
+        if config.protocol_version.startswith("delegation-contact-v1")
+        else len(tasks) * len(config.conditions) * len(config.seeds)
+    )
     print(
         json.dumps(
             {
@@ -135,6 +139,8 @@ def _validate(config_path: str) -> None:
 
 def _run(args: argparse.Namespace) -> None:
     config, tasks, boards = _load(args.config)
+    if config.protocol_version.startswith("delegation-contact-v1"):
+        raise ValueError("delegation-contact configs require scripts/run_delegation_contact.py")
     if args.provider:
         config = replace(config, provider=args.provider)
     if args.model:

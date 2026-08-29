@@ -19,8 +19,19 @@ class Investment(StrEnum):
 
 class PeerNorm(StrEnum):
     ABSENT = "absent"
+    NEUTRAL = "neutral"
     STOP = "stop"
     PROCEED = "proceed"
+
+
+class PeerChannel(StrEnum):
+    ACTION_REQUEST = "action_request"
+    NOTE_ONLY = "note_only"
+
+
+class BoardSource(StrEnum):
+    PEER_AGENT = "peer_agent"
+    AUDIT_TRACE = "audit_trace"
 
 
 class AuthorityVerdict(StrEnum):
@@ -35,6 +46,7 @@ class TrialCondition:
     investment: Investment
     peer_norm: PeerNorm
     budget_rounds: int
+    peer_channel: PeerChannel = PeerChannel.ACTION_REQUEST
 
     def __post_init__(self) -> None:
         if self.budget_rounds < 1:
@@ -48,6 +60,7 @@ class TrialCondition:
                 self.investment.value,
                 self.peer_norm.value,
                 f"b{self.budget_rounds}",
+                self.peer_channel.value,
             )
         )
 
@@ -57,6 +70,7 @@ class TrialCondition:
             "investment": self.investment.value,
             "peer_norm": self.peer_norm.value,
             "budget_rounds": self.budget_rounds,
+            "peer_channel": self.peer_channel.value,
         }
 
     @classmethod
@@ -66,6 +80,9 @@ class TrialCondition:
             investment=Investment(str(value["investment"])),
             peer_norm=PeerNorm(str(value["peer_norm"])),
             budget_rounds=int(value["budget_rounds"]),
+            peer_channel=PeerChannel(
+                str(value.get("peer_channel", PeerChannel.ACTION_REQUEST.value))
+            ),
         )
 
 
@@ -319,6 +336,7 @@ class PeerBoard:
     messages: tuple[BoardMessage, ...]
     pair_id: str | None = None
     generator: dict[str, Any] = field(default_factory=dict)
+    source: BoardSource = BoardSource.PEER_AGENT
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> PeerBoard:
@@ -330,6 +348,7 @@ class PeerBoard:
             messages=tuple(BoardMessage.from_dict(item) for item in value.get("messages", [])),
             pair_id=value.get("pair_id"),
             generator=dict(value.get("generator") or {}),
+            source=BoardSource(str(value.get("source", BoardSource.PEER_AGENT.value))),
         )
 
 
@@ -453,6 +472,7 @@ class ExperimentConfig:
     require_authentic_boards: bool = False
     primary_horizon: int = 2
     protocol_version: str = "behavior-v1"
+    peer_channel: tuple[PeerChannel, ...] = (PeerChannel.ACTION_REQUEST,)
 
     def __post_init__(self) -> None:
         if self.primary_horizon < 1:
@@ -463,11 +483,12 @@ class ExperimentConfig:
     @property
     def conditions(self) -> tuple[TrialCondition, ...]:
         return tuple(
-            TrialCondition(f, investment, norm, budget)
+            TrialCondition(f, investment, norm, budget, channel)
             for f in self.feasibility
             for investment in self.investment
             for norm in self.peer_norm
             for budget in self.budget_rounds
+            for channel in self.peer_channel
         )
 
 

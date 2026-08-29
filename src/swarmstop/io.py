@@ -84,7 +84,7 @@ def iter_results(path: str | Path) -> Iterable[dict[str, Any]]:
 
 def _serialize_config(config: ExperimentConfig) -> dict[str, Any]:
     raw = asdict(config)
-    for name in ("feasibility", "investment", "peer_norm"):
+    for name in ("feasibility", "investment", "peer_norm", "peer_channel"):
         raw[name] = [item.value for item in getattr(config, name)]
     return raw
 

@@ -1,0 +1,6 @@
+agentabstain_screen:
+  dataset_root: ../../data/upstreams/agentabstain-data
+  source_root: ../../data/upstreams/agentabstain
+  selection_path: ../task_selection_delegation_contact_v1.yaml
+  dataset_revision: 842228426c2a703347396501af61c7890972c7ee
+  source_revision: f581249704b26804e28a39e37396f1be00b71a4d

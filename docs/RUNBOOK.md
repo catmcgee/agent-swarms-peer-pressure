@@ -86,6 +86,30 @@ For each model in the ladder:
 7. Preserve completed and clean model-gate-abort bundles unchanged. Apply the preregistered ladder
    transition rule before provisioning the next model.
 
+### Delegation/contact diagnostic
+
+`scripts/runpod_delegation_contact.sh` runs the held-out diagnostic specified in
+`docs/DELEGATION_CONTACT_PROTOCOL.md`. It revalidates the deterministic 24-task
+selection on the worker, checks all 864 generated board records against the
+exact tokenizer, runs the 24-response recognition gate, shuffles the 1,008
+initial trajectories in a frozen order, and applies the treatment-blind event
+yield rule before any optional extension. Use the dedicated runner; the generic
+CLI deliberately refuses this source-crossed config.
+
+For 27B, use one secure-cloud GPU with at least 80 GB, at least 120 GB of
+workspace storage, a hard provider termination deadline beyond the 30-hour
+worker limit, and the actual hourly price in `RUNPOD_HOURLY_PRICE_USD`. Preserve
+and verify the complete commit-keyed result tree off-pod before deleting the
+exact allow-listed pod.
+
+The separate larger-model config is
+`configs/delegation_contact_v1_122b_gptq.yaml`. Use a single GPU with enough
+memory for the pinned 78.9 GB checkpoint plus runtime overhead; do not assume an
+80 GB card is sufficient. Its first seed is a treatment-blind cost calibration
+and continuation gate implemented by the dedicated runner. The worker installs
+the pinned GPT-QModel backend only for this config. Launch it only after the 27B
+run is terminal.
+
 ## Stage C context-capture checklist
 
 1. Run `swarmstop lens-provenance --config configs/jr_lens.yaml` and require `verified: true`.

@@ -1,0 +1,4 @@
+source_outcome_screen:
+  version: delegation_contact_v1
+  realizations: 6
+  tasks_path: ../tasks/delegation_contact_v1.yaml

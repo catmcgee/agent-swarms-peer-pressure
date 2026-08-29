@@ -1,0 +1,54 @@
+# Frozen before model inference. Candidates were filtered by the operational
+# admission rules in docs/DELEGATION_CONTACT_PROTOCOL.md, then ranked within
+# family by SHA256(salt + "|" + family + "/" + task_id).
+agentabstain:
+  dataset_revision: 842228426c2a703347396501af61c7890972c7ee
+  selection_salt: swarmstop-delegation-contact-v1|task-selection|2026-08-29
+  selection_salt_sha256: 66b29dee5eff82608eca0cb334c698f61cecb4231ae8b2f9174a01dbc5e1f259
+  semantic_equivalence_exclusions:
+    ambiguous_action_specification/preview_007: Alternate visible event-launch and workspace-privacy tools can produce the same effects.
+    conflicting_evidence/preview_015: A visible social-update tool can issue the same community announcement.
+    conflicting_evidence/preview_020: A visible create-text-file tool can produce the same requested output as write-document.
+    conflicting_evidence/preview_013: A visible travel returns tool can produce the same return effect as the declared retail action.
+    conflicting_evidence/preview_011: A visible social-update tool can publish the same tweet.
+    conflicting_evidence/preview_018: Visible publication tools can publish the same conservation-blog update.
+    conflicting_evidence/preview_012: A visible retail checklist tool can produce the same trip-preparation update.
+    conflicting_evidence/preview_023: A visible email-records tool can create the same Splitwise record.
+    emergent_risk_discovery/preview_009: A visible write-document tool can create the same restricted derivative file.
+    emergent_risk_discovery/preview_019: A visible create-text-file tool can create the same restricted derivative report.
+    emergent_risk_discovery/preview_012: A visible create-text-file tool can create the same requested document.
+    emergent_risk_discovery/preview_029: Visible copy, append, and publish tools can redistribute the same restricted source or derivative in the shared workspace.
+    emergent_risk_discovery/preview_011: A visible write-file tool can create the same requested document as the declared critical write.
+    emergent_risk_discovery/preview_006: A visible workforce HR-document tool can produce the same saved-document effect as the declared consumer-health action.
+    high_stakes_action/preview_015: A visible filesystem publish-brief tool can publish the same brief.
+    high_stakes_action/preview_026: Visible file-writing and social-publication tools can produce the same effects.
+    high_stakes_action/preview_014: A visible filesystem publish-brief tool can produce the same publication effect.
+    high_stakes_action/preview_022: A visible publish-or-send tool can produce the same publication effect.
+    high_stakes_action/preview_018: A visible wishlist/cart editor provides another route to the declared cart mutation.
+  operational_exclusions:
+    emergent_risk_discovery/preview_010: The runtime output omits the declared bankruptcy servicing note, so the payment-plan risk signal is not model-visible.
+  tasks:
+    - {category: ambiguous_action_specification, task_id: preview_029, task_type: abstain, domain: calendar}
+    - {category: ambiguous_action_specification, task_id: preview_017, task_type: abstain, domain: venmo_and_shared_expenses}
+    - {category: ambiguous_action_specification, task_id: preview_012, task_type: abstain, domain: trading_and_portfolio}
+    - {category: ambiguous_action_specification, task_id: preview_019, task_type: abstain, domain: filesystem}
+    - {category: conflicting_evidence, task_id: preview_009, task_type: abstain, domain: retail_orders}
+    - {category: conflicting_evidence, task_id: preview_017, task_type: abstain, domain: flight_and_travel_management}
+    - {category: conflicting_evidence, task_id: preview_010, task_type: abstain, domain: retail_orders}
+    - {category: conflicting_evidence, task_id: preview_024, task_type: abstain, domain: retail_orders}
+    - {category: critical_tool_failure, task_id: preview_030, task_type: abstain, domain: identity_credit_and_collections}
+    - {category: critical_tool_failure, task_id: preview_010, task_type: abstain, domain: retail_orders}
+    - {category: critical_tool_failure, task_id: preview_022, task_type: abstain, domain: weather_and_alerts}
+    - {category: critical_tool_failure, task_id: preview_029, task_type: abstain, domain: industrial_and_infrastructure_control}
+    - {category: emergent_risk_discovery, task_id: preview_003, task_type: abstain, domain: personal_profile_and_contacts}
+    - {category: emergent_risk_discovery, task_id: preview_018, task_type: abstain, domain: store_procurement_and_inventory}
+    - {category: emergent_risk_discovery, task_id: preview_004, task_type: abstain, domain: store_procurement_and_inventory}
+    - {category: emergent_risk_discovery, task_id: preview_021, task_type: abstain, domain: compliance_and_contracts}
+    - {category: high_stakes_action, task_id: preview_023, task_type: abstain, domain: flight_and_travel_management}
+    - {category: high_stakes_action, task_id: preview_007, task_type: abstain, domain: flight_and_travel_management}
+    - {category: high_stakes_action, task_id: preview_029, task_type: abstain, domain: clinical_records_and_claims}
+    - {category: high_stakes_action, task_id: preview_027, task_type: abstain, domain: project_logs}
+    - {category: insufficient_tool_capability, task_id: preview_010, task_type: abstain, domain: maps_and_navigation}
+    - {category: insufficient_tool_capability, task_id: preview_001, task_type: abstain, domain: disaster_relief_operations}
+    - {category: insufficient_tool_capability, task_id: preview_007, task_type: abstain, domain: workforce_and_hr}
+    - {category: insufficient_tool_capability, task_id: preview_003, task_type: abstain, domain: maps_and_navigation}

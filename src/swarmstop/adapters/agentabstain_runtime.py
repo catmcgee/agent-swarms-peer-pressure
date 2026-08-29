@@ -4,6 +4,7 @@ import copy
 import hashlib
 import importlib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -18,7 +19,7 @@ SOURCE_REVISION = "f581249704b26804e28a39e37396f1be00b71a4d"
 
 
 def load_agentabstain_screen(path: str | Path) -> list[TaskSpec]:
-    """Load the pinned 12-task screen with AgentAbstain's in-memory runtimes."""
+    """Load a pinned task selection with AgentAbstain's in-memory runtimes."""
     config_path = Path(path).resolve()
     raw = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     spec = raw.get("agentabstain_screen") or {}
@@ -39,17 +40,19 @@ def load_agentabstain_screen(path: str | Path) -> list[TaskSpec]:
         category = str(item["category"])
         pair_id = str(item["task_id"])
         key = f"{category}/{pair_id}"
-        if key not in alternatives or key not in names:
-            raise ValueError(f"screen task lacks a declared name or safe alternative: {key}")
+        if names and key not in names:
+            raise ValueError(f"screen task lacks a declared name: {key}")
+        if alternatives and key not in alternatives:
+            raise ValueError(f"screen task lacks a declared safe alternative: {key}")
         tasks.append(
             _build_task(
                 dataset_root=dataset_root,
                 source_root=source_root,
                 category=category,
                 pair_id=pair_id,
-                task_id=str(names[key]),
+                task_id=str(names.get(key, f"{category}__{pair_id}")),
                 task_type="abstain",
-                alternative=dict(alternatives[key]),
+                alternative=(dict(alternatives[key]) if key in alternatives else None),
                 dataset_revision=expected_dataset,
                 source_revision=expected_source,
             )
@@ -287,6 +290,11 @@ def _truncate_at_runtime_trigger(
         risk = trigger.get("risk_signal") or {}
         if isinstance(risk, dict):
             trigger_tool = str(risk.get("where") or "").split(" ", 1)[0] or None
+    elif trigger_tool is None and trigger_type == "conflicting_evidence":
+        stop_index = _conflicting_evidence_stop_index(preparatory, trigger)
+        if stop_index is None:
+            raise ValueError("conflicting-evidence sources do not resolve to setup calls")
+        return preparatory[: stop_index + 1]
     if trigger_tool is None:
         return preparatory
     for index, item in enumerate(preparatory):
@@ -297,6 +305,96 @@ def _truncate_at_runtime_trigger(
             f"declared pre_boundary_stop_after tool was not reachable: {trigger_tool}"
         )
     return preparatory
+
+
+def _conflicting_evidence_stop_index(
+    preparatory: list[dict[str, Any]],
+    trigger: dict[str, Any],
+) -> int | None:
+    contradiction = trigger.get("contradiction") or {}
+    evidence = [str(contradiction.get(name, "")) for name in ("evidence_a", "evidence_b")]
+    if any(not item for item in evidence):
+        return None
+    ranked = [
+        [(1000, -1)]
+        if "user instruction" in item.lower()
+        else _rank_evidence_sources(preparatory, item)
+        for item in evidence
+    ]
+    candidates = [
+        (score_a + score_b, index_a, index_b)
+        for score_a, index_a in ranked[0]
+        for score_b, index_b in ranked[1]
+        if index_a != index_b
+    ]
+    if not candidates:
+        return None
+    _, index_a, index_b = max(candidates)
+    return max(index_a, index_b)
+
+
+def _best_evidence_source_index(
+    preparatory: list[dict[str, Any]],
+    evidence: str,
+) -> int | None:
+    ranked = _rank_evidence_sources(preparatory, evidence)
+    return ranked[0][1] if ranked else None
+
+
+def _rank_evidence_sources(
+    preparatory: list[dict[str, Any]],
+    evidence: str,
+) -> list[tuple[int, int]]:
+    evidence_lower = evidence.lower()
+    evidence_tokens = _meaningful_tokens(evidence)
+    ranked: list[tuple[int, int]] = []
+    for index, item in enumerate(preparatory):
+        tool = str(item["tool"])
+        suffix = tool.rsplit(".", 1)[-1]
+        corpus = " ".join(
+            (
+                tool,
+                str(item.get("description", "")),
+            )
+        )
+        overlap = len(evidence_tokens & _meaningful_tokens(corpus))
+        explicit = (
+            100
+            if tool.lower() in evidence_lower
+            else 80
+            if suffix.lower() in evidence_lower
+            else 0
+        )
+        read_source = 20 if suffix.startswith(("read_", "get_", "lookup_")) else 0
+        if explicit or overlap >= 2:
+            ranked.append((explicit + read_source + overlap, index))
+    return sorted(ranked, reverse=True)
+
+
+def _meaningful_tokens(value: str) -> set[str]:
+    stopwords = {
+        "about",
+        "after",
+        "against",
+        "authoritative",
+        "before",
+        "cannot",
+        "could",
+        "entry",
+        "shows",
+        "source",
+        "status",
+        "their",
+        "there",
+        "these",
+        "which",
+        "would",
+    }
+    return {
+        token
+        for token in re.findall(r"[a-z0-9_]+", value.lower())
+        if len(token) >= 4 and token not in stopwords
+    }
 
 
 def _node_has_critical_effect(

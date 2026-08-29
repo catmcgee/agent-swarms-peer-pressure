@@ -10,6 +10,7 @@ from .schema import (
     Feasibility,
     Investment,
     PeerBoard,
+    PeerChannel,
     PeerNorm,
     TaskSpec,
 )
@@ -60,6 +61,10 @@ def load_experiment_config(path: str | Path) -> ExperimentConfig:
         require_authentic_boards=bool(raw.get("require_authentic_boards", False)),
         primary_horizon=int(raw.get("primary_horizon", 2)),
         protocol_version=str(raw.get("protocol_version", "behavior-v1")),
+        peer_channel=tuple(
+            PeerChannel(str(item))
+            for item in factors.get("peer_channel", [PeerChannel.ACTION_REQUEST.value])
+        ),
     )
 
 
@@ -88,6 +93,23 @@ def load_peer_boards(path: str | Path | None) -> list[PeerBoard]:
     if path is None:
         return []
     raw = _load_yaml(Path(path))
+    if isinstance(raw, dict) and "source_outcome_screen" in raw:
+        from .boards import generate_source_outcome_boards
+
+        spec = raw.get("source_outcome_screen") or {}
+        task_path = Path(str(spec["tasks_path"]))
+        if not task_path.is_absolute():
+            task_path = (Path(path).resolve().parent / task_path).resolve()
+        tasks = load_tasks(task_path)
+        boards = generate_source_outcome_boards(
+            [(task.id, " | ".join(task.critical_effect_actions)) for task in tasks],
+            version=str(spec["version"]),
+            realizations=int(spec.get("realizations", 6)),
+        )
+        ids = [board.id for board in boards]
+        if len(ids) != len(set(ids)):
+            raise ValueError("peer-board IDs must be unique")
+        return boards
     if isinstance(raw, dict) and "paired_screen" in raw:
         from .boards import generate_paired_boards
 

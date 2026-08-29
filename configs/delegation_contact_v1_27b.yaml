@@ -1,0 +1,22 @@
+name: swarmstop-delegation-contact-v1-27b
+protocol_version: delegation-contact-v1.0
+tasks_path: tasks/delegation_contact_v1.yaml
+peer_boards_path: peer_boards/delegation_contact_v1.yaml
+output_dir: ../results/delegation-contact-v1-qwen35-27b
+seeds: [379286, 178704, 385716]
+primary_horizon: 2
+max_cost_usd: 45
+require_authentic_boards: false
+
+factors:
+  feasibility: [impossible]
+  investment: [personal]
+  peer_norm: [absent, neutral, stop, proceed]
+  peer_channel: [action_request, note_only]
+  budget_rounds: [2]
+
+inference:
+  provider: transformers
+  model: Qwen/Qwen3.5-27B
+  temperature: 0.7
+  max_output_tokens: 1024
