@@ -135,9 +135,17 @@ def test_remote_wrapper_pins_compatible_torchvision_and_checks_imports() -> None
     shell = (ROOT / "scripts/runpod_delegation_contact.sh").read_text()
     assert "'torchvision==0.23.0'" in shell
     assert "'torchvision==0.24.1'" not in shell
+    assert "'gptqmodel==7.3.5'" in shell
+    assert "'torchao==0.16.0'" in shell
+    assert "'transformers==5.16.1'" in shell
+    assert "'accelerate==1.14.0'" in shell
+    assert "'tokenizers==0.23.1'" in shell
     assert 'torch.__version__.startswith("2.8.")' in shell
     assert 'torchvision.__version__.startswith("0.23.")' in shell
     assert "from transformers import AutoProcessor" in shell
+    assert '"tokenizers": (tokenizers.__version__, "0.23.1")' in shell
+    assert '"torchao": (torchao.__version__, "0.16.0")' in shell
+    assert '"transformers": (transformers.__version__, "5.16.1")' in shell
     assert shell.index("'torchvision==0.23.0'") < shell.index(
         "from transformers import AutoProcessor"
     ) < shell.index("python scripts/fetch_upstreams.py --source")

@@ -35,21 +35,52 @@ python -m pip install \
   'transformers==5.5.0' \
   'PyYAML==6.0.3' \
   'Pillow==12.3.0'
+large_runtime=0
 if grep -q 'Qwen3.5-122B-A10B-GPTQ-Int4' "$diagnostic_config"; then
-  python -m pip install --no-build-isolation 'gptqmodel==7.3.5'
+  large_runtime=1
+  python -m pip install --no-build-isolation \
+    'gptqmodel==7.3.5' \
+    'torchao==0.16.0' \
+    'transformers==5.16.1' \
+    'accelerate==1.14.0' \
+    'tokenizers==0.23.1'
 fi
 python -m pip install --no-deps \
   'torchvision==0.23.0' \
   --index-url https://download.pytorch.org/whl/cu128
-python - <<'PY'
+python - "$large_runtime" <<'PY'
+import sys
+
+import accelerate
 import torch
+import tokenizers
 import torchvision
+import transformers
 from transformers import AutoProcessor
 
 if not torch.__version__.startswith("2.8."):
     raise RuntimeError(f"expected PyTorch 2.8.x, found {torch.__version__}")
 if not torchvision.__version__.startswith("0.23."):
     raise RuntimeError(f"expected torchvision 0.23.x, found {torchvision.__version__}")
+if sys.argv[1] == "1":
+    import gptqmodel
+    import torchao
+
+    expected = {
+        "accelerate": (accelerate.__version__, "1.14.0"),
+        "gptqmodel": (gptqmodel.__version__, "7.3.5"),
+        "tokenizers": (tokenizers.__version__, "0.23.1"),
+        "torchao": (torchao.__version__, "0.16.0"),
+        "transformers": (transformers.__version__, "5.16.1"),
+    }
+else:
+    expected = {
+        "accelerate": (accelerate.__version__, "1.10.1"),
+        "transformers": (transformers.__version__, "5.5.0"),
+    }
+for package, (actual, required) in expected.items():
+    if actual != required:
+        raise RuntimeError(f"expected {package} {required}, found {actual}")
 print(f"validated torch={torch.__version__} torchvision={torchvision.__version__}")
 PY
 python -m pip install -e . --no-deps

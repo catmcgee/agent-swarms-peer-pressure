@@ -251,3 +251,17 @@ torchvision, and model-processor imports before source validation or model
 loading. Continue to use the original pod billing-start timestamp and preserve
 the failed session and launcher logs. This amendment changes no task, prompt,
 factor, seed, endpoint, gate, model, or analysis rule.
+
+### 2026-08-30 — pre-inference larger-runtime dependency constraint
+
+The first larger-model setup attempt ended before model download or any
+experimental response. GPTQModel's unconstrained dependencies upgraded the
+transformer stack and selected TorchAO 0.18, whose Python API requires a newer
+PyTorch version than the worker image. For the prespecified GPTQ checkpoint,
+pin GPTQModel 7.3.5, TorchAO 0.16.0, Transformers 5.16.1, Accelerate 1.14.0,
+and Tokenizers 0.23.1, and require their imports and exact versions to pass
+before source validation or model loading. TorchAO 0.16 supports its Python API
+on PyTorch 2.8; compiled TorchAO extensions are not required by this GPTQ load.
+Continue to use the original pod billing-start timestamp and preserve the
+failed launcher log. This amendment changes no task, prompt, factor, seed,
+endpoint, gate, checkpoint revision, or analysis rule.
