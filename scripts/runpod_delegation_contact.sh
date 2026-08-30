@@ -40,6 +40,7 @@ if grep -q 'Qwen3.5-122B-A10B-GPTQ-Int4' "$diagnostic_config"; then
   large_runtime=1
   python -m pip install --no-build-isolation \
     'gptqmodel==7.3.5' \
+    'optimum==2.3.0' \
     'torchao==0.16.0' \
     'transformers==5.16.1' \
     'accelerate==1.14.0' \
@@ -65,10 +66,13 @@ if not torchvision.__version__.startswith("0.23."):
 if sys.argv[1] == "1":
     import gptqmodel
     import torchao
+    from importlib.metadata import version
+    from optimum.gptq import GPTQQuantizer
 
     expected = {
         "accelerate": (accelerate.__version__, "1.14.0"),
         "gptqmodel": (gptqmodel.__version__, "7.3.5"),
+        "optimum": (version("optimum"), "2.3.0"),
         "tokenizers": (tokenizers.__version__, "0.23.1"),
         "torchao": (torchao.__version__, "0.16.0"),
         "transformers": (transformers.__version__, "5.16.1"),

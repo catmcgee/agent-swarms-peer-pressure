@@ -265,3 +265,15 @@ on PyTorch 2.8; compiled TorchAO extensions are not required by this GPTQ load.
 Continue to use the original pod billing-start timestamp and preserve the
 failed launcher log. This amendment changes no task, prompt, factor, seed,
 endpoint, gate, checkpoint revision, or analysis rule.
+
+### 2026-08-30 — pre-model-load GPTQ bridge dependency
+
+The next larger-model setup attempt ended before checkpoint loading or any
+experimental response because the pinned Transformers GPTQ loader requires the
+Optimum bridge, which was not installed by GPTQModel's base dependency set.
+Pin Optimum 2.3.0 and require both its exact installed version and
+`optimum.gptq.GPTQQuantizer` import to pass with the previously frozen larger
+runtime before source validation or model loading. Continue to use the original
+pod billing-start timestamp and preserve the failed launcher and session logs.
+This amendment changes no task, prompt, factor, seed, endpoint, gate, model,
+checkpoint revision, or analysis rule.
