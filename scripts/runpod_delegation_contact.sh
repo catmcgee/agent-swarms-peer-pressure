@@ -66,8 +66,12 @@ if not torchvision.__version__.startswith("0.23."):
 if sys.argv[1] == "1":
     import gptqmodel
     import torchao
+    from gptqmodel import BACKEND, GPTQModel
     from importlib.metadata import version
     from optimum.gptq import GPTQQuantizer
+
+    if BACKEND.GPTQ_MARLIN.value != "gptq_marlin" or not callable(GPTQModel.load):
+        raise RuntimeError("native GPTQModel Marlin loader is unavailable")
 
     expected = {
         "accelerate": (accelerate.__version__, "1.14.0"),

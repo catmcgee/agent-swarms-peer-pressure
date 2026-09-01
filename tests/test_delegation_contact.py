@@ -144,6 +144,8 @@ def test_remote_wrapper_pins_compatible_torchvision_and_checks_imports() -> None
     assert 'torch.__version__.startswith("2.8.")' in shell
     assert 'torchvision.__version__.startswith("0.23.")' in shell
     assert "from transformers import AutoProcessor" in shell
+    assert "from gptqmodel import BACKEND, GPTQModel" in shell
+    assert 'BACKEND.GPTQ_MARLIN.value != "gptq_marlin"' in shell
     assert "from optimum.gptq import GPTQQuantizer" in shell
     assert '"optimum": (version("optimum"), "2.3.0")' in shell
     assert '"tokenizers": (tokenizers.__version__, "0.23.1")' in shell
@@ -152,6 +154,19 @@ def test_remote_wrapper_pins_compatible_torchvision_and_checks_imports() -> None
     assert shell.index("'torchvision==0.23.0'") < shell.index(
         "from transformers import AutoProcessor"
     ) < shell.index("python scripts/fetch_upstreams.py --source")
+
+
+def test_larger_checkpoint_uses_native_gptq_loader() -> None:
+    source = (ROOT / "src/swarmstop/model.py").read_text()
+    assert '"Qwen/Qwen3.5-122B-A10B-GPTQ-Int4"' in source
+    assert "from gptqmodel import BACKEND, GPTQModel" in source
+    assert "self.model = GPTQModel.load(" in source
+    assert "backend=BACKEND.GPTQ_MARLIN" in source
+    assert "_validate_native_gptq_checkpoint(model_id, revision)" in source
+    assert "_smoke_test_native_gptq_model(" in source
+    assert source.index("if model_id in _NATIVE_GPTQ_MODEL_IDS:") < source.index(
+        "self.model = GPTQModel.load("
+    ) < source.index("self.model = AutoModelForMultimodalLM.from_pretrained(")
 
 
 def test_protocol_rejects_duplicate_factor_entries() -> None:

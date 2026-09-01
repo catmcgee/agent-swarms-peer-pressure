@@ -277,3 +277,23 @@ runtime before source validation or model loading. Continue to use the original
 pod billing-start timestamp and preserve the failed launcher and session logs.
 This amendment changes no task, prompt, factor, seed, endpoint, gate, model,
 checkpoint revision, or analysis rule.
+
+### 2026-08-31 — pre-inference native GPTQ loader correction
+
+The first complete larger-checkpoint load ended before recognition preflight or
+any experimental response. The generic Transformers/Optimum bridge attempted
+to replace the checkpoint's unquantized one-output shared-expert gate with a
+Marlin quantized linear layer, which requires output dimensions divisible by
+64. The checkpoint stores that gate in BF16 and declares a GPTQModel dynamic
+exclusion for shared-expert modules; GPTQModel 7.3.5's Qwen3.5 module tree also
+marks the gate unquantized. Use the pinned GPTQModel native loader for this
+checkpoint so those checkpoint-authored exclusions are applied before kernel
+conversion. Pin its Marlin backend: all 36,864 routed-expert projections in the
+pinned index meet the backend's dimensional constraints, while a pre-weight
+gate requires the unquantized module boundary to remain exact. After loading,
+require the same module boundary, Marlin kernel classes, BF16 shared-expert
+gates, and a one-token neutral generation smoke before any task prompt.
+Continue to use the original pod billing-start timestamp and preserve all
+earlier launcher and session logs. This amendment changes no task, prompt,
+factor, seed, endpoint, gate, model, checkpoint revision, sampling parameter,
+or analysis rule.

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+from pathlib import Path
 from typing import Any, Protocol
 
 from .qwen_chat import (
@@ -12,6 +14,133 @@ from .qwen_chat import (
     tool_calls_match_schemas,
 )
 from .schema import ModelResponse, ToolCall, Usage
+
+_NATIVE_GPTQ_MODEL_IDS = frozenset(
+    {
+        "Qwen/Qwen3.5-122B-A10B-GPTQ-Int4",
+    }
+)
+
+
+def _validate_native_gptq_checkpoint(
+    model_id: str,
+    revision: str,
+) -> frozenset[str]:
+    """Validate the pinned checkpoint's quantized-module boundary pre-load."""
+    from gptqmodel import QuantizeConfig
+    from huggingface_hub import hf_hub_download
+
+    config_path = Path(
+        hf_hub_download(model_id, "config.json", revision=revision)
+    )
+    index_path = Path(
+        hf_hub_download(
+            model_id,
+            "model.safetensors.index.json",
+            revision=revision,
+        )
+    )
+    config = json.loads(config_path.read_text())
+    weight_map = json.loads(index_path.read_text())["weight_map"]
+    quant_config = QuantizeConfig.from_pretrained(str(config_path.parent))
+
+    excluded_modules = (
+        "model.language_model.layers.0.self_attn.q_proj",
+        "model.language_model.layers.0.linear_attn.in_proj_qkv",
+        "model.language_model.layers.0.mlp.shared_expert_gate",
+        "model.language_model.layers.0.mlp.shared_expert.gate_proj",
+    )
+    for module_name in excluded_modules:
+        if quant_config.dynamic_get(module_name) is not False:
+            raise RuntimeError(f"GPTQ exclusion is missing for {module_name}")
+    routed_expert = "model.language_model.layers.0.mlp.experts.0.gate_proj"
+    if quant_config.dynamic_get(routed_expert) is False:
+        raise RuntimeError(f"GPTQ unexpectedly excludes {routed_expert}")
+
+    text_config = config["text_config"]
+    layer_count = int(text_config["num_hidden_layers"])
+    expert_count = int(text_config["num_experts"])
+    expected_quant_modules = frozenset(
+        f"model.language_model.layers.{layer}.mlp.experts.{expert}.{projection}"
+        for layer in range(layer_count)
+        for expert in range(expert_count)
+        for projection in ("gate_proj", "up_proj", "down_proj")
+    )
+    observed_quant_modules = frozenset(
+        name.removesuffix(".qweight")
+        for name in weight_map
+        if name.endswith(".qweight")
+    )
+    if observed_quant_modules != expected_quant_modules:
+        missing = len(expected_quant_modules - observed_quant_modules)
+        extra = len(observed_quant_modules - expected_quant_modules)
+        raise RuntimeError(
+            f"GPTQ module boundary mismatch: missing={missing}, extra={extra}"
+        )
+
+    expected_shared_gates = {
+        f"model.language_model.layers.{layer}.mlp.shared_expert_gate.weight"
+        for layer in range(layer_count)
+    }
+    if not expected_shared_gates.issubset(weight_map):
+        raise RuntimeError("one or more unquantized shared-expert gates are missing")
+    if any(name.replace(".weight", ".qweight") in weight_map for name in expected_shared_gates):
+        raise RuntimeError("a shared-expert gate was unexpectedly quantized")
+    return expected_quant_modules
+
+
+def _smoke_test_native_gptq_model(
+    model: Any,
+    tokenizer: Any,
+    expected_quant_modules: frozenset[str],
+) -> None:
+    """Check loaded kernel classes and execute one neutral token pre-task."""
+    import torch
+
+    quant_pattern = re.compile(
+        r"(model\.language_model\.layers\.\d+\.mlp\.experts\.\d+\."
+        r"(?:gate_proj|up_proj|down_proj))$"
+    )
+    gate_pattern = re.compile(
+        r"model\.language_model\.layers\.\d+\.mlp\.shared_expert_gate$"
+    )
+    observed_quant_modules: set[str] = set()
+    shared_gates = []
+    for name, module in model.named_modules():
+        match = quant_pattern.search(name)
+        if match and hasattr(module, "qweight"):
+            observed_quant_modules.add(match.group(1))
+            module_path = module.__class__.__module__.lower()
+            if ".qlinear.marlin" not in module_path:
+                raise RuntimeError(f"non-Marlin GPTQ module loaded at {match.group(1)}")
+        if gate_pattern.search(name):
+            shared_gates.append(module)
+    if observed_quant_modules != expected_quant_modules:
+        missing = len(expected_quant_modules - observed_quant_modules)
+        extra = len(observed_quant_modules - expected_quant_modules)
+        raise RuntimeError(
+            f"loaded GPTQ module boundary mismatch: missing={missing}, extra={extra}"
+        )
+    if len(shared_gates) != 48:
+        raise RuntimeError(f"expected 48 shared-expert gates, found {len(shared_gates)}")
+    if any(
+        gate.weight.dtype != torch.bfloat16 or tuple(gate.weight.shape) != (1, 3072)
+        for gate in shared_gates
+    ):
+        raise RuntimeError("shared-expert gates did not remain BF16 [1, 3072] linears")
+
+    encoded = tokenizer("Compatibility check.", return_tensors="pt")
+    device = model.get_input_embeddings().weight.device
+    encoded = {name: value.to(device) for name, value in encoded.items()}
+    with torch.inference_mode():
+        output = model.generate(
+            **encoded,
+            max_new_tokens=1,
+            do_sample=False,
+            pad_token_id=tokenizer.eos_token_id,
+        )
+    if int(output.shape[-1]) != int(encoded["input_ids"].shape[-1]) + 1:
+        raise RuntimeError("native GPTQ one-token generation smoke failed")
 
 
 class ModelClient(Protocol):
@@ -108,27 +237,53 @@ class TransformersToolModel:
         device: str = "cuda",
     ):
         import torch
-        from transformers import AutoModelForMultimodalLM, AutoProcessor
+        from transformers import AutoProcessor
 
         if not revision:
             raise ValueError("a pinned model revision is required")
         self.model_id = model_id
         self.revision = revision
         self.tokenizer_revision = tokenizer_revision or revision
+        expected_quant_modules = None
+        if model_id in _NATIVE_GPTQ_MODEL_IDS:
+            expected_quant_modules = _validate_native_gptq_checkpoint(model_id, revision)
         self.processor = AutoProcessor.from_pretrained(
             model_id,
             revision=self.tokenizer_revision,
         )
         self.tokenizer = getattr(self.processor, "tokenizer", self.processor)
-        self.model = AutoModelForMultimodalLM.from_pretrained(
-            model_id,
-            revision=revision,
-            dtype=torch.bfloat16,
-            device_map={"": device},
-            low_cpu_mem_usage=True,
-        )
+        load_kwargs = {
+            "revision": revision,
+            "dtype": torch.bfloat16,
+            "device_map": {"": device},
+            "low_cpu_mem_usage": True,
+        }
+        if model_id in _NATIVE_GPTQ_MODEL_IDS:
+            from gptqmodel import BACKEND, GPTQModel
+
+            # The checkpoint uses GPTQModel's per-module exclusions for
+            # unquantized attention and MoE gate layers. Its native loader
+            # applies those exclusions before selecting a kernel per module.
+            self.model = GPTQModel.load(
+                model_id,
+                backend=BACKEND.GPTQ_MARLIN,
+                **load_kwargs,
+            )
+        else:
+            from transformers import AutoModelForMultimodalLM
+
+            self.model = AutoModelForMultimodalLM.from_pretrained(
+                model_id,
+                **load_kwargs,
+            )
         self.model.eval()
         self.device = self.model.get_input_embeddings().weight.device
+        if expected_quant_modules is not None:
+            _smoke_test_native_gptq_model(
+                self.model,
+                self.tokenizer,
+                expected_quant_modules,
+            )
 
     def complete(
         self,
