@@ -32,6 +32,12 @@ RUNNER_SPEC = importlib.util.spec_from_file_location(
 assert RUNNER_SPEC is not None and RUNNER_SPEC.loader is not None
 diagnostic_run = importlib.util.module_from_spec(RUNNER_SPEC)
 RUNNER_SPEC.loader.exec_module(diagnostic_run)
+DEADLINE_SPEC = importlib.util.spec_from_file_location(
+    "compute_run_deadline", ROOT / "scripts/compute_run_deadline.py"
+)
+assert DEADLINE_SPEC is not None and DEADLINE_SPEC.loader is not None
+deadline_run = importlib.util.module_from_spec(DEADLINE_SPEC)
+DEADLINE_SPEC.loader.exec_module(deadline_run)
 
 
 class UnadvertisedDelegationModel:
@@ -128,6 +134,10 @@ def test_new_config_is_held_out_balanced_impossible_factorial() -> None:
     )
     diagnostic_run._validate_protocol_config(large, tasks)
     assert large.model == diagnostic_run.LARGE_MODEL_ID
+    assert (
+        diagnostic_run.LARGE_RERUN_LABEL
+        == "delegation-contact-v1-122b-gptq-rerun-v2"
+    )
     assert large.max_cost_usd == 45
 
 
@@ -146,6 +156,26 @@ def test_remote_wrapper_pins_compatible_torchvision_and_checks_imports() -> None
     assert "from transformers import AutoProcessor" in shell
     assert "from gptqmodel import BACKEND, GPTQModel" in shell
     assert 'BACKEND.GPTQ_MARLIN.value != "gptq_marlin"' in shell
+    assert 'one_shot=${DIAGNOSTIC_ONE_SHOT:-0}' in shell
+    assert 'refusing to resume a one-shot result root' in shell
+    assert '"one_shot": one_shot == "1"' in shell
+    assert 'RUNPOD_POD_ID is required for a one-shot run' in shell
+    assert '--provider-pod-id "${provider_pod_id:-unknown}"' in shell
+    assert 'one_shot_args+=(--one-shot)' in shell
+    assert 'delegation-contact-v1-122b-gptq-rerun-v2' in shell
+    assert 'exec timeout --signal=KILL "${remaining_seconds}s"' in shell
+    assert 'export DIAGNOSTIC_BILLING_START_UNIX="$billing_start_unix"' in shell
+    assert shell.index(
+        'export DIAGNOSTIC_BILLING_START_UNIX="$billing_start_unix"'
+    ) < shell.index('exec timeout --signal=KILL "${remaining_seconds}s"')
+    assert 'if ! mkdir "$output_root"' in shell
+    assert shell.index('if ! mkdir "$output_root"') < shell.index(
+        "python -m venv"
+    )
+    assert shell.index('> "$session_dir/launch_metadata.json"') < shell.index(
+        "python -m venv"
+    )
+    assert "timeout --signal=TERM --kill-after=120s 110000s" not in shell
     assert "from optimum.gptq import GPTQQuantizer" in shell
     assert '"optimum": (version("optimum"), "2.3.0")' in shell
     assert '"tokenizers": (tokenizers.__version__, "0.23.1")' in shell
@@ -519,6 +549,91 @@ def test_budget_resume_rejects_changed_parameters(tmp_path, monkeypatch) -> None
             max_wall_seconds=100,
             hourly_price=0.5,
             max_cost=10.0,
+        )
+
+
+def test_one_shot_budget_binds_provider_epoch_and_refuses_reuse(
+    tmp_path, monkeypatch
+) -> None:
+    ledger = tmp_path / "budget.json"
+    monkeypatch.setattr(diagnostic_run.time, "monotonic", lambda: 10.0)
+    monkeypatch.setattr(diagnostic_run.time, "time", lambda: 110.0)
+    diagnostic_run.BudgetTracker(
+        ledger,
+        process_started=0.0,
+        max_wall_seconds=100,
+        hourly_price=2.0,
+        max_cost=10.0,
+        billing_epoch_started_unix=100.0,
+        provider_pod_id="pod-1",
+        one_shot=True,
+    ).check()
+    payload = json.loads(ledger.read_text())
+    assert payload["billing_epoch_started_unix"] == 100.0
+    assert payload["provider_pod_id"] == "pod-1"
+    assert payload["one_shot"] is True
+    with pytest.raises(ValueError, match="one-shot budget ledger"):
+        diagnostic_run.BudgetTracker(
+            ledger,
+            process_started=0.0,
+            max_wall_seconds=100,
+            hourly_price=2.0,
+            max_cost=10.0,
+            billing_epoch_started_unix=100.0,
+            provider_pod_id="pod-1",
+            one_shot=True,
+        )
+
+
+def test_absolute_deadline_uses_tighter_cost_cap() -> None:
+    remaining, deadline = deadline_run.compute_deadline(
+        billing_start_unix=1_000.0,
+        max_wall_seconds=108_000,
+        hourly_price_usd=2.09,
+        max_cost_usd=45.0,
+        now_unix=1_100.0,
+    )
+    cost_seconds = int(45.0 / 2.09 * 3600)
+    assert deadline == 1_000 + cost_seconds
+    assert remaining == cost_seconds - 100
+
+
+def test_absolute_deadline_fails_closed_when_expired() -> None:
+    with pytest.raises(ValueError, match="no time remains"):
+        deadline_run.compute_deadline(
+            billing_start_unix=1_000.0,
+            max_wall_seconds=108_000.0,
+            hourly_price_usd=1.0,
+            max_cost_usd=45.0,
+            now_unix=109_001.0,
+        )
+
+
+@pytest.mark.parametrize(
+    ("max_wall_seconds", "max_cost_usd"),
+    ((108_001.0, 45.0), (108_000.0, 45.01)),
+)
+def test_absolute_deadline_rejects_changed_caps(
+    max_wall_seconds: float, max_cost_usd: float
+) -> None:
+    with pytest.raises(ValueError, match="registered protocol"):
+        deadline_run.compute_deadline(
+            billing_start_unix=1_000.0,
+            max_wall_seconds=max_wall_seconds,
+            hourly_price_usd=2.09,
+            max_cost_usd=max_cost_usd,
+            now_unix=1_001.0,
+        )
+
+
+def test_absolute_deadline_rejects_future_epoch() -> None:
+    with pytest.raises(ValueError, match="cannot begin in the future"):
+        deadline_run.compute_deadline(
+            billing_start_unix=1_002.0,
+            max_wall_seconds=108_000.0,
+            hourly_price_usd=2.09,
+            max_cost_usd=45.0,
+            now_unix=1_001.0,
         )
 
 

@@ -47,6 +47,7 @@ TRIAL_ORDER_SEED = 20260829
 PEER_TARGETS = ("peer-a", "peer-b", "peer-c")
 BOARD_VERSION = "delegation_contact_v1"
 LARGE_MODEL_ID = "Qwen/Qwen3.5-122B-A10B-GPTQ-Int4"
+LARGE_RERUN_LABEL = "delegation-contact-v1-122b-gptq-rerun-v2"
 LARGE_CALIBRATION_MARGIN = 0.15
 MAX_WALL_SECONDS = 108_000
 
@@ -60,21 +61,32 @@ class BudgetTracker:
         max_wall_seconds: int,
         hourly_price: float,
         max_cost: float,
+        billing_epoch_started_unix: float | None = None,
+        provider_pod_id: str | None = None,
+        one_shot: bool = False,
     ) -> None:
         self.path = path
         self.process_started = process_started
         self.max_wall_seconds = max_wall_seconds
         self.hourly_price = hourly_price
         self.max_cost = max_cost
+        self.billing_epoch_started_unix = billing_epoch_started_unix
+        self.provider_pod_id = provider_pod_id
+        self.one_shot = one_shot
         self.prior_seconds = 0.0
         now_monotonic = time.monotonic()
         now_unix = time.time()
         if path.exists():
+            if one_shot:
+                raise ValueError("refusing to reuse a one-shot budget ledger")
             prior = json.loads(path.read_text(encoding="utf-8"))
             expected = {
+                "billing_epoch_started_unix": billing_epoch_started_unix,
                 "hourly_price_usd": hourly_price,
                 "max_cost_usd": max_cost,
                 "max_wall_seconds": max_wall_seconds,
+                "provider_pod_id": provider_pod_id,
+                "one_shot": one_shot,
             }
             mismatched = {
                 key: (prior.get(key), value)
@@ -112,10 +124,13 @@ class BudgetTracker:
             self.path,
             {
                 "cumulative_elapsed_seconds": elapsed,
+                "billing_epoch_started_unix": self.billing_epoch_started_unix,
                 "estimated_gpu_cost_usd": elapsed / 3600 * self.hourly_price,
                 "hourly_price_usd": self.hourly_price,
                 "max_cost_usd": self.max_cost,
                 "max_wall_seconds": self.max_wall_seconds,
+                "one_shot": self.one_shot,
+                "provider_pod_id": self.provider_pod_id,
                 "last_checkpoint_unix": time.time(),
                 "session_active": active,
             },
@@ -126,19 +141,34 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/delegation_contact_v1_27b.yaml")
     parser.add_argument("--output-root", required=True)
+    parser.add_argument("--run-label")
     parser.add_argument("--model-revision")
     parser.add_argument("--hourly-price", type=float, required=True)
     parser.add_argument("--max-wall-seconds", type=int, default=MAX_WALL_SECONDS)
     parser.add_argument("--max-cost-usd", type=float)
     parser.add_argument("--billing-start-unix", type=float)
+    parser.add_argument("--provider-pod-id")
+    parser.add_argument("--one-shot", action="store_true")
     args = parser.parse_args()
 
     if args.hourly_price <= 0:
         raise ValueError("hourly price must be positive")
+    if args.one_shot and (
+        args.billing_start_unix is None or not args.provider_pod_id
+    ):
+        raise ValueError(
+            "one-shot runs require a billing epoch start and provider pod id"
+        )
     started = time.monotonic()
     if args.billing_start_unix is not None:
         started -= max(0.0, time.time() - args.billing_start_unix)
     config = load_experiment_config(args.config)
+    if config.model == LARGE_MODEL_ID and (
+        args.run_label != LARGE_RERUN_LABEL or not args.one_shot
+    ):
+        raise ValueError(
+            "the pinned 122B config requires the exact rerun-v2 label and one-shot mode"
+        )
     if args.max_wall_seconds != MAX_WALL_SECONDS:
         raise ValueError("cumulative wall-clock cap differs from preregistration")
     model_revision = _resolve_model_revision(config.model, args.model_revision)
@@ -161,6 +191,9 @@ def main() -> None:
         max_wall_seconds=args.max_wall_seconds,
         hourly_price=args.hourly_price,
         max_cost=max_cost,
+        billing_epoch_started_unix=args.billing_start_unix,
+        provider_pod_id=args.provider_pod_id,
+        one_shot=args.one_shot,
     )
     budget.check()
     try:
@@ -180,6 +213,10 @@ def main() -> None:
         ),
         "peer_boards_sha256": file_sha256(config.peer_boards_path),
         "model_revision": model_revision,
+        "run_label": args.run_label,
+        "one_shot": args.one_shot,
+        "provider_pod_id": args.provider_pod_id,
+        "billing_epoch_started_unix": args.billing_start_unix,
         "hourly_price_usd": args.hourly_price,
         "max_cost_usd": max_cost,
         "max_wall_seconds": args.max_wall_seconds,

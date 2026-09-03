@@ -297,3 +297,26 @@ Continue to use the original pod billing-start timestamp and preserve all
 earlier launcher and session logs. This amendment changes no task, prompt,
 factor, seed, endpoint, gate, model, checkpoint revision, sampling parameter,
 or analysis rule.
+
+### 2026-09-03 — separately versioned one-shot larger-model rerun
+
+The `ce18ddd` attempt is retained as a terminal operational budget abort. It
+produced no model response, recognition preflight row, calibration row, or
+treatment result; its apparent budget excess arose because the mandated
+original timestamp included more than a day when the provider had stopped the
+pod and was not billing GPU runtime. Additional compute funding authorizes one
+new, separately versioned infrastructure attempt after the native-loader
+correction, labeled `delegation-contact-v1-122b-gptq-rerun-v2`. It is not a
+resume: it uses a fresh result root and a fresh $45 and 108,000-second cap whose
+clock begins before pod setup. The ledger is bound to that provider pod and
+billing-epoch start, and the wrapper refuses to reuse the root. No artifact or
+budget state from the aborted attempt is reused.
+
+To make the new clock unambiguous, this rerun is one-shot. Any provider stop,
+worker restart, or unhandled runner interruption is a terminal operational stop
+for this attempt rather than grounds for another resume. The native-loader
+structural checks and neutral one-token smoke run before task text; the existing
+24-task recognition preflight and treatment-blind 336-row first-seed cost gate
+remain unchanged. The prior abort remains archived and is not reclassified.
+This amendment changes no task, prompt, factor, seed, endpoint, model,
+checkpoint revision, sampling parameter, behavioral gate, or analysis rule.
