@@ -320,3 +320,21 @@ structural checks and neutral one-token smoke run before task text; the existing
 remain unchanged. The prior abort remains archived and is not reclassified.
 This amendment changes no task, prompt, factor, seed, endpoint, model,
 checkpoint revision, sampling parameter, behavioral gate, or analysis rule.
+
+### 2026-09-03 — provider-provisioning abort and separately versioned v3 attempt
+
+The `rerun-v2` provider allocation is retained as a terminal operational
+abort. During a bounded readiness window of approximately 101 minutes, the
+provider reported zero container uptime and never exposed a usable container
+or SSH endpoint. Consequently, no repository checkout, result root, model
+response, recognition preflight row, calibration row, or treatment result was
+created. The allocation was deleted after exact identity verification to stop
+further spend.
+
+One additional pre-outcome infrastructure attempt is authorized under the
+label `delegation-contact-v1-122b-gptq-rerun-v3`. It remains one-shot, uses a
+fresh result root and a fresh provider allocation, and retains the same $45 and
+108,000-second caps beginning before provider setup. It may not reuse any
+artifact, ledger, or budget state from either prior abort. This amendment
+changes no task, prompt, factor, seed, endpoint, model, checkpoint revision,
+sampling parameter, behavioral gate, calibration rule, or analysis rule.

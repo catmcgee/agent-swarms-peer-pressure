@@ -136,7 +136,7 @@ def test_new_config_is_held_out_balanced_impossible_factorial() -> None:
     assert large.model == diagnostic_run.LARGE_MODEL_ID
     assert (
         diagnostic_run.LARGE_RERUN_LABEL
-        == "delegation-contact-v1-122b-gptq-rerun-v2"
+        == "delegation-contact-v1-122b-gptq-rerun-v3"
     )
     assert large.max_cost_usd == 45
 
@@ -162,7 +162,7 @@ def test_remote_wrapper_pins_compatible_torchvision_and_checks_imports() -> None
     assert 'RUNPOD_POD_ID is required for a one-shot run' in shell
     assert '--provider-pod-id "${provider_pod_id:-unknown}"' in shell
     assert 'one_shot_args+=(--one-shot)' in shell
-    assert 'delegation-contact-v1-122b-gptq-rerun-v2' in shell
+    assert 'delegation-contact-v1-122b-gptq-rerun-v3' in shell
     assert 'exec timeout --signal=KILL "${remaining_seconds}s"' in shell
     assert 'export DIAGNOSTIC_BILLING_START_UNIX="$billing_start_unix"' in shell
     assert shell.index(

@@ -47,7 +47,7 @@ TRIAL_ORDER_SEED = 20260829
 PEER_TARGETS = ("peer-a", "peer-b", "peer-c")
 BOARD_VERSION = "delegation_contact_v1"
 LARGE_MODEL_ID = "Qwen/Qwen3.5-122B-A10B-GPTQ-Int4"
-LARGE_RERUN_LABEL = "delegation-contact-v1-122b-gptq-rerun-v2"
+LARGE_RERUN_LABEL = "delegation-contact-v1-122b-gptq-rerun-v3"
 LARGE_CALIBRATION_MARGIN = 0.15
 MAX_WALL_SECONDS = 108_000
 
@@ -167,7 +167,7 @@ def main() -> None:
         args.run_label != LARGE_RERUN_LABEL or not args.one_shot
     ):
         raise ValueError(
-            "the pinned 122B config requires the exact rerun-v2 label and one-shot mode"
+            "the pinned 122B config requires the exact rerun-v3 label and one-shot mode"
         )
     if args.max_wall_seconds != MAX_WALL_SECONDS:
         raise ValueError("cumulative wall-clock cap differs from preregistration")

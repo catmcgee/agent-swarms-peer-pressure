@@ -33,8 +33,8 @@ fi
 large_runtime=0
 if grep -q 'Qwen3.5-122B-A10B-GPTQ-Int4' "$diagnostic_config"; then
   large_runtime=1
-  if [[ "$run_label" != "delegation-contact-v1-122b-gptq-rerun-v2" ]]; then
-    echo "the pinned 122B config requires the exact rerun-v2 label" >&2
+  if [[ "$run_label" != "delegation-contact-v1-122b-gptq-rerun-v3" ]]; then
+    echo "the pinned 122B config requires the exact rerun-v3 label" >&2
     exit 2
   fi
   if [[ "$one_shot" != "1" ]]; then
