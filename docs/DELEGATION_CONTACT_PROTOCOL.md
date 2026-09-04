@@ -364,3 +364,21 @@ state, or result root from a prior abort. The checkpoint structural checks,
 neutral one-token model smoke, 24-task recognition preflight, treatment-blind
 336-row calibration, 15% projection margin, prompts, tasks, seeds, behavioral
 gates, and analysis rules remain unchanged.
+
+### 2026-09-04 — terminal stop after v4 provider failure
+
+The `rerun-v4` allocation is retained as a terminal operational abort. The
+provider never exposed a usable container or SSH endpoint and reported zero
+container uptime, so no repository checkout, result root, hardware gate, model
+response, recognition preflight row, calibration row, or treatment result was
+created. The provider reported exit approximately 6 hours 42 minutes after the
+requested automatic-termination deadline. Its pod-specific billing record
+reports 47,816,468 milliseconds and $90.56 charged, exceeding the registered
+$45 cap without executing the experiment. The exact allocation was deleted
+after identity verification.
+
+No further larger-model allocation is authorized under this protocol. Any
+future attempt requires a new dated amendment, a resolved provider billing and
+provisioning path, and a cost-control mechanism independently verified to stop
+provider billing. The scientific design and all completed results remain
+unchanged.
