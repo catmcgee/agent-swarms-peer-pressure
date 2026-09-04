@@ -33,14 +33,20 @@ fi
 large_runtime=0
 if grep -q 'Qwen3.5-122B-A10B-GPTQ-Int4' "$diagnostic_config"; then
   large_runtime=1
-  if [[ "$run_label" != "delegation-contact-v1-122b-gptq-rerun-v3" ]]; then
-    echo "the pinned 122B config requires the exact rerun-v3 label" >&2
+  if [[ "$run_label" != "delegation-contact-v1-122b-gptq-rerun-v4" ]]; then
+    echo "the pinned 122B config requires the exact rerun-v4 label" >&2
     exit 2
   fi
   if [[ "$one_shot" != "1" ]]; then
     echo "the pinned 122B rerun requires DIAGNOSTIC_ONE_SHOT=1" >&2
     exit 2
   fi
+  python - "$hourly_price" <<'PY'
+import sys
+
+if float(sys.argv[1]) != 6.79:
+    raise SystemExit("the pinned 122B B200 rate must be exactly $6.79/hour")
+PY
 fi
 read -r remaining_seconds absolute_deadline_unix < <(
   python scripts/compute_run_deadline.py \
@@ -74,6 +80,7 @@ session_dir="$output_root/sessions/$session_id"
 mkdir -p /workspace/hf "$output_root/sessions"
 mkdir "$session_dir"
 export HF_HOME=/workspace/hf
+trap 'status=$?; printf "%s\n" "$status" > "$session_dir/wrapper_exit_code.txt"' EXIT
 python - "$diagnostic_config" "$run_label" "$runner_revision" \
   "$hourly_price" "${provider_pod_id:-unknown}" "$billing_start_unix" \
   "$absolute_deadline_unix" "$max_cost_usd" "$max_wall_seconds" "$one_shot" \
@@ -108,11 +115,98 @@ print(json.dumps({
     "runner_revision": revision,
 }, indent=2, sort_keys=True))
 PY
-nvidia-smi \
-  --query-gpu=name,uuid,memory.total,driver_version \
-  --format=csv,noheader \
-  > "$session_dir/gpu.txt"
-trap 'status=$?; printf "%s\n" "$status" > "$session_dir/wrapper_exit_code.txt"' EXIT
+hardware_args=()
+if [[ "$large_runtime" == "1" ]]; then
+  python - "$session_dir/hardware.json" <<'PY'
+import hashlib
+import json
+import re
+import subprocess
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+import torch
+
+if not torch.cuda.is_available():
+    raise RuntimeError("CUDA is unavailable")
+if torch.cuda.device_count() != 1:
+    raise RuntimeError(f"expected exactly one CUDA device, found {torch.cuda.device_count()}")
+
+gpu_name = torch.cuda.get_device_name(0)
+if gpu_name != "NVIDIA B200":
+    raise RuntimeError(f"expected NVIDIA B200, found {gpu_name}")
+compute_capability = list(torch.cuda.get_device_capability(0))
+if compute_capability != [10, 0]:
+    raise RuntimeError(f"expected compute capability 10.0, found {compute_capability}")
+memory_total_gib = torch.cuda.get_device_properties(0).total_memory / 1024**3
+if memory_total_gib < 170.0:
+    raise RuntimeError(f"expected at least 170 GiB device memory, found {memory_total_gib}")
+if torch.version.cuda != "12.8":
+    raise RuntimeError(f"expected torch CUDA 12.8, found {torch.version.cuda}")
+torch_arch_list = torch.cuda.get_arch_list()
+if "sm_100" not in torch_arch_list:
+    raise RuntimeError(f"PyTorch build lacks sm_100 support: {torch_arch_list}")
+
+nvcc_output = subprocess.run(
+    ["nvcc", "--version"], check=True, capture_output=True, text=True
+).stdout
+match = re.search(r"release\s+(\d+\.\d+)", nvcc_output)
+nvcc_release = match.group(1) if match else None
+if nvcc_release != "12.8":
+    raise RuntimeError(f"expected nvcc 12.8, found {nvcc_release}")
+
+smi_lines = subprocess.run(
+    [
+        "nvidia-smi",
+        "--query-gpu=name,uuid,memory.total,driver_version",
+        "--format=csv,noheader,nounits",
+    ],
+    check=True,
+    capture_output=True,
+    text=True,
+).stdout.strip().splitlines()
+if len(smi_lines) != 1:
+    raise RuntimeError(f"expected one nvidia-smi row, found {len(smi_lines)}")
+smi_name, gpu_uuid, memory_total_mib, driver_version = (
+    field.strip() for field in smi_lines[0].split(",")
+)
+if smi_name != gpu_name:
+    raise RuntimeError(f"nvidia-smi name differs from PyTorch: {smi_name} != {gpu_name}")
+if float(memory_total_mib) / 1024 < 170.0:
+    raise RuntimeError(f"nvidia-smi reports insufficient memory: {memory_total_mib} MiB")
+
+smoke = torch.tensor([1.0, 2.0], device="cuda").square().sum()
+torch.cuda.synchronize()
+if smoke.item() != 5.0:
+    raise RuntimeError(f"CUDA smoke returned {smoke.item()}, expected 5.0")
+
+payload = {
+    "compute_capability": compute_capability,
+    "created_at": datetime.now(UTC).isoformat(),
+    "cuda_smoke_passed": True,
+    "driver_version": driver_version,
+    "gpu_count": 1,
+    "gpu_name": gpu_name,
+    "gpu_uuid_sha256": hashlib.sha256(gpu_uuid.encode()).hexdigest(),
+    "memory_total_gib": memory_total_gib,
+    "memory_total_mib_nvidia_smi": float(memory_total_mib),
+    "nvcc_release": nvcc_release,
+    "torch_arch_list": torch_arch_list,
+    "torch_cuda_version": torch.version.cuda,
+    "torch_version": torch.__version__,
+}
+Path(sys.argv[1]).write_text(
+    json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+)
+PY
+  hardware_args+=(--hardware-metadata "$session_dir/hardware.json")
+else
+  nvidia-smi \
+    --query-gpu=name,uuid,memory.total,driver_version \
+    --format=csv,noheader \
+    > "$session_dir/gpu.txt"
+fi
 
 runtime_venv=/root/swarmstop-diagnostic-venv
 python -m venv --system-site-packages "$runtime_venv"
@@ -205,6 +299,7 @@ python scripts/run_delegation_contact.py \
     --max-wall-seconds "$max_wall_seconds" \
     --billing-start-unix "$billing_start_unix" \
     --provider-pod-id "${provider_pod_id:-unknown}" \
+    "${hardware_args[@]}" \
     "${one_shot_args[@]}" \
   2>&1 | tee "$session_dir/run.log"
 run_status=${PIPESTATUS[0]}

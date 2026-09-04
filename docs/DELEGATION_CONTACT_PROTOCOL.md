@@ -338,3 +338,29 @@ fresh result root and a fresh provider allocation, and retains the same $45 and
 artifact, ledger, or budget state from either prior abort. This amendment
 changes no task, prompt, factor, seed, endpoint, model, checkpoint revision,
 sampling parameter, behavioral gate, calibration rule, or analysis rule.
+
+### 2026-09-04 — second provisioning abort and B200 v4 attempt
+
+The `rerun-v3` provider allocation is retained as a terminal operational
+abort. It was billed for approximately 34 minutes while reporting zero
+container uptime and never exposed a usable container or SSH endpoint. No
+repository checkout, result root, model response, recognition preflight row,
+calibration row, or treatment result was created. The allocation was deleted
+after exact identity verification.
+
+One final pre-outcome infrastructure attempt is authorized under the label
+`delegation-contact-v1-122b-gptq-rerun-v4`. It uses one NVIDIA B200 with at
+least 170 GiB of device memory at a frozen $6.79/hour rate, a fresh result root,
+provider allocation, ledger, and billing epoch, and the same $45 and
+108,000-second caps. The cost cap therefore binds at 23,858 seconds; provider
+termination must be set no later than that absolute deadline. Before package
+installation or inference, the wrapper must fail closed unless it observes
+exactly one B200, compute capability 10.0, CUDA and nvcc 12.8, an `sm_100`
+PyTorch build, adequate device memory, and a successful CUDA operation.
+Structured hardware metadata is bound into result provenance.
+
+This attempt remains one-shot and cannot reuse any artifact, ledger, budget
+state, or result root from a prior abort. The checkpoint structural checks,
+neutral one-token model smoke, 24-task recognition preflight, treatment-blind
+336-row calibration, 15% projection margin, prompts, tasks, seeds, behavioral
+gates, and analysis rules remain unchanged.

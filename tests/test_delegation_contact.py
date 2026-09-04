@@ -136,8 +136,9 @@ def test_new_config_is_held_out_balanced_impossible_factorial() -> None:
     assert large.model == diagnostic_run.LARGE_MODEL_ID
     assert (
         diagnostic_run.LARGE_RERUN_LABEL
-        == "delegation-contact-v1-122b-gptq-rerun-v3"
+        == "delegation-contact-v1-122b-gptq-rerun-v4"
     )
+    assert diagnostic_run.LARGE_HOURLY_PRICE_USD == 6.79
     assert large.max_cost_usd == 45
 
 
@@ -162,7 +163,19 @@ def test_remote_wrapper_pins_compatible_torchvision_and_checks_imports() -> None
     assert 'RUNPOD_POD_ID is required for a one-shot run' in shell
     assert '--provider-pod-id "${provider_pod_id:-unknown}"' in shell
     assert 'one_shot_args+=(--one-shot)' in shell
-    assert 'delegation-contact-v1-122b-gptq-rerun-v3' in shell
+    assert 'delegation-contact-v1-122b-gptq-rerun-v4' in shell
+    assert 'float(sys.argv[1]) != 6.79' in shell
+    assert 'torch.cuda.device_count() != 1' in shell
+    assert 'gpu_name != "NVIDIA B200"' in shell
+    assert 'compute_capability != [10, 0]' in shell
+    assert 'memory_total_gib < 170.0' in shell
+    assert 'torch.version.cuda != "12.8"' in shell
+    assert '"sm_100" not in torch_arch_list' in shell
+    assert 'nvcc_release != "12.8"' in shell
+    assert 'cuda_smoke_passed' in shell
+    assert 'gpu_uuid_sha256' in shell
+    assert 'hardware_args+=(--hardware-metadata "$session_dir/hardware.json")' in shell
+    assert '"${hardware_args[@]}"' in shell
     assert 'exec timeout --signal=KILL "${remaining_seconds}s"' in shell
     assert 'export DIAGNOSTIC_BILLING_START_UNIX="$billing_start_unix"' in shell
     assert shell.index(
@@ -175,6 +188,9 @@ def test_remote_wrapper_pins_compatible_torchvision_and_checks_imports() -> None
     assert shell.index('> "$session_dir/launch_metadata.json"') < shell.index(
         "python -m venv"
     )
+    assert shell.index('> "$session_dir/launch_metadata.json"') < shell.index(
+        'python - "$session_dir/hardware.json"'
+    ) < shell.index("python -m venv")
     assert "timeout --signal=TERM --kill-after=120s 110000s" not in shell
     assert "from optimum.gptq import GPTQQuantizer" in shell
     assert '"optimum": (version("optimum"), "2.3.0")' in shell
@@ -197,6 +213,32 @@ def test_larger_checkpoint_uses_native_gptq_loader() -> None:
     assert source.index("if model_id in _NATIVE_GPTQ_MODEL_IDS:") < source.index(
         "self.model = GPTQModel.load("
     ) < source.index("self.model = AutoModelForMultimodalLM.from_pretrained(")
+
+
+def test_large_hardware_metadata_is_revalidated_and_bound(tmp_path) -> None:
+    hardware = tmp_path / "hardware.json"
+    payload = {
+        "compute_capability": [10, 0],
+        "cuda_smoke_passed": True,
+        "gpu_count": 1,
+        "gpu_name": "NVIDIA B200",
+        "memory_total_gib": 178.0,
+        "nvcc_release": "12.8",
+        "torch_arch_list": ["sm_80", "sm_90", "sm_100"],
+        "torch_cuda_version": "12.8",
+    }
+    hardware.write_text(json.dumps(payload))
+    assert diagnostic_run._load_large_hardware_metadata(hardware) == payload
+
+    payload["compute_capability"] = [12, 0]
+    hardware.write_text(json.dumps(payload))
+    with pytest.raises(ValueError, match="failed validation"):
+        diagnostic_run._load_large_hardware_metadata(hardware)
+
+    source = (ROOT / "scripts/run_delegation_contact.py").read_text()
+    assert 'parser.add_argument("--hardware-metadata")' in source
+    assert 'common_provenance["hardware_metadata"]' in source
+    assert 'common_provenance["hardware_metadata_sha256"]' in source
 
 
 def test_protocol_rejects_duplicate_factor_entries() -> None:

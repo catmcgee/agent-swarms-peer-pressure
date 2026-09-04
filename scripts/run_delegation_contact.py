@@ -47,9 +47,34 @@ TRIAL_ORDER_SEED = 20260829
 PEER_TARGETS = ("peer-a", "peer-b", "peer-c")
 BOARD_VERSION = "delegation_contact_v1"
 LARGE_MODEL_ID = "Qwen/Qwen3.5-122B-A10B-GPTQ-Int4"
-LARGE_RERUN_LABEL = "delegation-contact-v1-122b-gptq-rerun-v3"
+LARGE_RERUN_LABEL = "delegation-contact-v1-122b-gptq-rerun-v4"
+LARGE_HOURLY_PRICE_USD = 6.79
 LARGE_CALIBRATION_MARGIN = 0.15
 MAX_WALL_SECONDS = 108_000
+
+
+def _load_large_hardware_metadata(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    expected = {
+        "compute_capability": [10, 0],
+        "cuda_smoke_passed": True,
+        "gpu_count": 1,
+        "gpu_name": "NVIDIA B200",
+        "nvcc_release": "12.8",
+        "torch_cuda_version": "12.8",
+    }
+    mismatched = {
+        key: (payload.get(key), value)
+        for key, value in expected.items()
+        if payload.get(key) != value
+    }
+    if mismatched:
+        raise ValueError(f"B200 hardware metadata failed validation: {mismatched}")
+    if float(payload.get("memory_total_gib", 0.0)) < 170.0:
+        raise ValueError("B200 hardware metadata reports insufficient device memory")
+    if "sm_100" not in payload.get("torch_arch_list", []):
+        raise ValueError("B200 hardware metadata lacks sm_100 support")
+    return payload
 
 
 class BudgetTracker:
@@ -148,6 +173,7 @@ def main() -> None:
     parser.add_argument("--max-cost-usd", type=float)
     parser.add_argument("--billing-start-unix", type=float)
     parser.add_argument("--provider-pod-id")
+    parser.add_argument("--hardware-metadata")
     parser.add_argument("--one-shot", action="store_true")
     args = parser.parse_args()
 
@@ -167,8 +193,18 @@ def main() -> None:
         args.run_label != LARGE_RERUN_LABEL or not args.one_shot
     ):
         raise ValueError(
-            "the pinned 122B config requires the exact rerun-v3 label and one-shot mode"
+            "the pinned 122B config requires the exact rerun-v4 label and one-shot mode"
         )
+    hardware_metadata_path = (
+        Path(args.hardware_metadata).resolve() if args.hardware_metadata else None
+    )
+    hardware_metadata = None
+    if config.model == LARGE_MODEL_ID:
+        if args.hourly_price != LARGE_HOURLY_PRICE_USD:
+            raise ValueError("the pinned 122B B200 rate must be exactly $6.79/hour")
+        if hardware_metadata_path is None:
+            raise ValueError("the pinned 122B B200 run requires hardware metadata")
+        hardware_metadata = _load_large_hardware_metadata(hardware_metadata_path)
     if args.max_wall_seconds != MAX_WALL_SECONDS:
         raise ValueError("cumulative wall-clock cap differs from preregistration")
     model_revision = _resolve_model_revision(config.model, args.model_revision)
@@ -227,6 +263,11 @@ def main() -> None:
         "board_version": BOARD_VERSION,
         "peer_targets": list(PEER_TARGETS),
     }
+    if hardware_metadata is not None and hardware_metadata_path is not None:
+        common_provenance["hardware_metadata"] = hardware_metadata
+        common_provenance["hardware_metadata_sha256"] = file_sha256(
+            hardware_metadata_path
+        )
 
     preflight = _run_recognition_preflight(
         config=config,
